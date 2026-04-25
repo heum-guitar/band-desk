@@ -49,6 +49,7 @@
   --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --app-height: 100svh;
 }
 
 body.dark-mode {
@@ -91,10 +92,8 @@ body {
   display: flex;
   justify-content: center;
   width: 100%;
-  height: 100vh;
-  height: 100svh;
-  min-height: 100vh;
-  min-height: 100svh;
+  height: var(--app-height);
+  min-height: var(--app-height);
   overflow: hidden;
   overscroll-behavior: none;
   position: fixed;
@@ -109,17 +108,15 @@ body {
   position: relative;
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  height: 100svh;
+  height: var(--app-height);
   overflow: hidden;
   overscroll-behavior: none;
   box-shadow: 0 0 40px rgba(0,0,0,0.08);
 }
 
 @supports (height: 100dvh) {
-  body,
-  .app-container {
-    height: 100dvh;
+  :root {
+    --app-height: 100dvh;
   }
 }
 
@@ -905,7 +902,7 @@ let refreshingForUpdate = false;
 const LOGIN_KEY = 'bandDeskCurrentUserId';
 const APP_STATE_KEY = 'bandDeskAppStateV1';
 const THEME_KEY = 'bandDeskTheme';
-const APP_BUILD = '2026-04-25-05';
+const APP_BUILD = '2026-04-25-06';
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyDlG00JPma_ThM2omg5WAfYMUavd6F5xVk",
   authDomain: "heum-band.firebaseapp.com",
@@ -920,6 +917,18 @@ let cloudDb = null;
 let cloudSaveTimer = null;
 let applyingRemoteState = false;
 let cloudConnectedOnce = false;
+
+function syncAppViewportHeight() {
+  const viewport = window.visualViewport;
+  const height = viewport?.height || window.innerHeight || document.documentElement.clientHeight;
+  document.documentElement.style.setProperty('--app-height', `${Math.round(height)}px`);
+}
+
+syncAppViewportHeight();
+window.addEventListener('resize', syncAppViewportHeight);
+window.addEventListener('orientationchange', syncAppViewportHeight);
+window.visualViewport?.addEventListener('resize', syncAppViewportHeight);
+window.visualViewport?.addEventListener('scroll', syncAppViewportHeight);
 
 function dateKey(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
