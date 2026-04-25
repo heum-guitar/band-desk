@@ -719,10 +719,10 @@ svg { fill: currentColor; }
       </div>
       <div id="songs-library"><div class="list-group" id="library-list"></div></div>
       <div id="songs-setlist" style="display:none">
-        <div class="card" style="background:var(--c-blue-pale);border-color:rgba(91,92,226,.14);margin-bottom:var(--space-4)">
+        <div class="card" style="background:var(--c-blue-pale);border-color:rgba(91,92,226,.14);margin-bottom:var(--space-4)" id="setlist-event-card">
           <div style="font-weight:600;color:var(--c-blue-base);margin-bottom:4px">합주 일자</div>
-          <div style="font-size:22px;font-weight:700">이번 토요일 18:00</div>
-          <div style="font-size:13px;color:var(--c-text-muted);margin-top:2px">홍대 A스튜디오 3번방</div>
+          <div style="font-size:22px;font-weight:700" id="setlist-event-title">등록된 일정 없음</div>
+          <div style="font-size:13px;color:var(--c-text-muted);margin-top:2px" id="setlist-event-place">리더가 일정을 등록하면 표시됩니다</div>
         </div>
         <div class="section-header">
           <h2>합주 곡 목록</h2>
@@ -837,54 +837,28 @@ const SONGS = [
   { id:8, title:'거울', artist:'Binge watch', mp3:false, sheet:false },
 ];
 
-let setlist = SONGS.map(s => s.id);
+let setlist = [];
 
-let notices = [
-  { id:1, type:'schedule',    title:'10월 정기 합주 안내',            content:'10월 28일 토요일 오후 2시, 홍대 A스튜디오 3번방에서 정기 합주를 진행합니다. 늦지 않게 참석 부탁드립니다.',  author:'조진흠', date:'10.20', pinned:true  },
-  { id:3, type:'general',     title:'Hysteria 악보 구합니다',          content:'악보 파일 구하고 계신 분 있으면 공유 부탁드립니다.',                                                        author:'신성용', date:'10.19', pinned:false },
-];
+let notices = [];
 
 const COMPETITIONS = [];
+const DEFAULT_NOTICE_TITLES = new Set([
+  '10월 정기 합주 안내',
+  'Hysteria 악보 구합니다',
+]);
 const SAMPLE_COMPETITION_TITLES = [
   '제4회 울산 중구 전국거리음악대회',
   '2026 제5회 광주버스킹월드컵',
+  '2026 직장인 밴드 경연대회 퇴근 후 락',
   '2026 퇴근 후 락 樂',
   '전국 청소년 밴드 챔피언십',
 ];
 
-let tasks = [
-  { id:1, mid:'jinheum', title:'경연대회 참가 신청서 작성', dl:'10.20', done:true },
-  { id:2, mid:'jinheum', title:'합주 공지 최종 확인', dl:'10.25', done:false },
-  { id:3, mid:'seongyong', title:'Hysteria 파트 카피 완료하기', dl:'10.25', done:false },
-  { id:4, mid:'seongyong', title:'비밀번호 486 악보 정리', dl:'10.22', done:true },
-  { id:5, mid:'rakhyun', title:'Dani California 파트 연습', dl:'10.25', done:false },
-  { id:6, mid:'rakhyun', title:'비밀번호 486 가사 완벽히 외우기', dl:'10.26', done:true },
-  { id:7, mid:'sanghyun', title:'Dani California 리프 완성', dl:'10.24', done:true },
-  { id:8, mid:'sanghyun', title:'Mr. Brightside 코드 진행 연습', dl:'10.27', done:false },
-];
+let tasks = [];
 
-let schedules = {
-  '2024-10-14': ['jinheum','seongyong','rakhyun'],
-  '2024-10-15': ['seongyong','sanghyun'],
-  '2024-10-19': ['jinheum','rakhyun','sanghyun'],
-  '2024-10-20': ['jinheum'],
-  '2024-10-21': ['jinheum','seongyong','rakhyun','sanghyun'],
-  '2024-10-26': ['jinheum','seongyong'],
-  '2024-10-27': ['jinheum','rakhyun','sanghyun'],
-  '2024-10-28': ['jinheum','seongyong','rakhyun','sanghyun'],
-};
+let schedules = {};
 
-let bandEvents = [
-  {
-    id: 1,
-    type: 'rehearsal',
-    title: '정기 합주',
-    date: nextDateKey(3),
-    time: '18:00',
-    place: '홍대 A스튜디오 3번방',
-    memo: '이번 주 합주곡 중심으로 맞춥니다.',
-  },
-];
+let bandEvents = [];
 
 // ═══════════════ STATE ═══════════════
 let currentUserId = null;
@@ -902,7 +876,7 @@ let refreshingForUpdate = false;
 const LOGIN_KEY = 'bandDeskCurrentUserId';
 const APP_STATE_KEY = 'bandDeskAppStateV1';
 const THEME_KEY = 'bandDeskTheme';
-const APP_BUILD = '2026-04-26-17';
+const APP_BUILD = '2026-04-26-19';
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyDlG00JPma_ThM2omg5WAfYMUavd6F5xVk",
   authDomain: "heum-band.firebaseapp.com",
@@ -921,6 +895,11 @@ let cloudReady = false;
 let cloudSavePending = false;
 let lastLocalSavedAt = 0;
 let lastAppliedRemoteSavedAt = 0;
+let cloudClientId = sessionStorage.getItem('bandDeskCloudClientId');
+if (!cloudClientId) {
+  cloudClientId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  sessionStorage.setItem('bandDeskCloudClientId', cloudClientId);
+}
 
 function dateKey(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
@@ -966,7 +945,6 @@ function isCoverSong(song) {
 
 function syncCompetitionData() {
   const openCompetitions = mergeCompetitionItems([
-    ...getVerifiedCompetitionItems(),
     ...removeSampleCompetitions(COMPETITIONS),
   ]).filter(isCompetitionOpen);
   COMPETITIONS.splice(0, COMPETITIONS.length, ...openCompetitions);
@@ -1050,6 +1028,7 @@ function makeCloudPayload(state = getAppState()) {
     state,
     savedAt,
     appBuild: APP_BUILD,
+    clientId: cloudClientId,
     updatedAt: new Date(savedAt).toISOString(),
   };
 }
@@ -1057,22 +1036,25 @@ function makeCloudPayload(state = getAppState()) {
 function saveAppState() {
   const state = getAppState();
   lastLocalSavedAt = Date.now();
-  localStorage.setItem(APP_STATE_KEY, JSON.stringify(state));
+  persistLocalAppState(state);
   queueCloudSave(state);
 }
 
+function persistLocalAppState(state = getAppState()) {
+  localStorage.setItem(APP_STATE_KEY, JSON.stringify(state));
+}
+
 function mergeCompetitionLists(savedCompetitions) {
-  const cleanedCompetitions = removeSampleCompetitions(savedCompetitions);
-  const seen = new Set(cleanedCompetitions.map(item => item.id || item.title));
-  const newDefaults = COMPETITIONS.filter(item => !seen.has(item.id) && !seen.has(item.title));
-  return [...cleanedCompetitions, ...newDefaults];
+  return removeSampleCompetitions(savedCompetitions);
 }
 
 function mergeNoticeLists(savedNotices) {
-  const cleanedNotices = removeSampleCompetitionNotices(savedNotices);
-  const seen = new Set(cleanedNotices.map(item => item.id || item.title));
-  const newDefaults = notices.filter(item => !seen.has(item.id) && !seen.has(item.title));
-  return [...cleanedNotices, ...newDefaults];
+  return removeDefaultNotices(savedNotices);
+}
+
+function removeDefaultNotices(items) {
+  return removeSampleCompetitionNotices(items)
+    .filter(item => !DEFAULT_NOTICE_TITLES.has(String(item?.title || '').trim()));
 }
 
 function isSampleCompetitionTitle(value) {
@@ -1100,32 +1082,51 @@ function isOutdatedSearchCompetition(item) {
   return publishedAt < cutoff;
 }
 
-function applyAppState(state) {
+function applyAppState(state, { mergeDefaults = true } = {}) {
   if (Array.isArray(state.songs)) SONGS.splice(0, SONGS.length, ...state.songs);
   if (Array.isArray(state.setlist)) setlist = state.setlist;
-  if (Array.isArray(state.notices)) notices = mergeNoticeLists(state.notices);
-  if (Array.isArray(state.competitions)) COMPETITIONS.splice(0, COMPETITIONS.length, ...mergeCompetitionLists(state.competitions));
+  if (Array.isArray(state.notices)) notices = mergeDefaults ? mergeNoticeLists(state.notices) : removeDefaultNotices(state.notices);
+  if (Array.isArray(state.competitions)) {
+    const nextCompetitions = mergeDefaults ? mergeCompetitionLists(state.competitions) : removeSampleCompetitions(state.competitions);
+    COMPETITIONS.splice(0, COMPETITIONS.length, ...nextCompetitions);
+  }
   if (Array.isArray(state.hiddenCompetitionNoticeIds)) hiddenCompetitionNoticeIds = state.hiddenCompetitionNoticeIds;
   if (Array.isArray(state.tasks)) tasks = state.tasks;
   if (state.schedules && typeof state.schedules === 'object') schedules = state.schedules;
   if (Array.isArray(state.bandEvents)) bandEvents = state.bandEvents;
 }
 
+const SEED_TASK_IDS = new Set([1, 2, 3, 4, 5, 6, 7, 8]);
+const SEED_BAND_EVENT_IDS = new Set([1]);
+
+function purgeSeedData(state) {
+  if (Array.isArray(state.tasks))
+    state.tasks = state.tasks.filter(t => !SEED_TASK_IDS.has(t.id));
+  if (Array.isArray(state.bandEvents))
+    state.bandEvents = state.bandEvents.filter(e => !SEED_BAND_EVENT_IDS.has(e.id));
+  if (state.schedules && typeof state.schedules === 'object') {
+    const keys = Object.keys(state.schedules);
+    if (keys.length && keys.every(k => k.startsWith('2024-10-')))
+      state.schedules = {};
+  }
+  return state;
+}
+
 function loadAppState() {
   const saved = localStorage.getItem(APP_STATE_KEY);
   if (!saved) {
     syncCompetitionData();
-    localStorage.setItem(APP_STATE_KEY, JSON.stringify(getAppState()));
+    persistLocalAppState();
     return;
   }
   try {
-    applyAppState(JSON.parse(saved));
+    applyAppState(purgeSeedData(JSON.parse(saved)));
     syncCompetitionData();
-    localStorage.setItem(APP_STATE_KEY, JSON.stringify(getAppState()));
+    persistLocalAppState();
   } catch {
     showToast('저장된 데이터를 불러오지 못했습니다');
     syncCompetitionData();
-    localStorage.setItem(APP_STATE_KEY, JSON.stringify(getAppState()));
+    persistLocalAppState();
   }
 }
 
@@ -1155,7 +1156,7 @@ function queueCloudSave(state = getAppState()) {
         cloudSavePending = true;
         showToast(`공유 저장 실패: ${error.code || '연결 확인'}`);
       });
-  }, 150);
+  }, 0);
 }
 
 async function initCloudSync() {
@@ -1203,14 +1204,23 @@ async function initCloudSync() {
 function applyRemotePayload(remoteData) {
   const remoteState = remoteData?.state;
   if (!remoteState) return;
+  purgeSeedData(remoteState);
+  const remoteStateJson = JSON.stringify(remoteState);
   const remoteSavedAt = Number(remoteData.savedAt || 0);
   if (remoteSavedAt && remoteSavedAt < lastAppliedRemoteSavedAt) return;
+  if (remoteSavedAt && lastLocalSavedAt && remoteSavedAt < lastLocalSavedAt) {
+    queueCloudSave(getAppState());
+    return;
+  }
   applyingRemoteState = true;
-  applyAppState(remoteState);
+  applyAppState(remoteState, { mergeDefaults: false });
   syncCompetitionData();
-  localStorage.setItem(APP_STATE_KEY, JSON.stringify(getAppState()));
+  const cleanedState = getAppState();
+  const cleanedStateJson = JSON.stringify(cleanedState);
+  localStorage.setItem(APP_STATE_KEY, cleanedStateJson);
   applyingRemoteState = false;
   lastAppliedRemoteSavedAt = Math.max(lastAppliedRemoteSavedAt, remoteSavedAt);
+  if (cleanedStateJson !== remoteStateJson) queueCloudSave(cleanedState);
   refreshVisibleData();
   if (!cloudConnectedOnce) {
     cloudConnectedOnce = true;
@@ -1514,6 +1524,16 @@ function renderNotices() {
   const sorted = [...notices].sort((a,b) => (b.pinned?1:0) - (a.pinned?1:0));
   const tc = { schedule:'blue', general:'muted', competition:'orange' };
   const tl = { schedule:'일정', general:'일반', competition:'대회' };
+  if (!sorted.length) {
+    document.getElementById('notice-list').innerHTML = `
+      <div class="card" style="text-align:center;padding:var(--space-8) var(--space-4)">
+        <div style="font-size:16px;font-weight:700;margin-bottom:var(--space-2)">등록된 공지가 없습니다</div>
+        <div style="font-size:13px;color:var(--c-text-muted);line-height:1.6">리더가 새 공지를 올리면 이곳에 바로 표시됩니다.</div>
+      </div>
+    `;
+    updateLeaderControls();
+    return;
+  }
   document.getElementById('notice-list').innerHTML = sorted.map(n => {
     const noticeId = JSON.stringify(n.id);
     return `
@@ -1637,6 +1657,16 @@ function renderLibrary() {
 }
 
 function renderSetlistView() {
+  const nextEvent = getNextBandEvent();
+  const titleEl = document.getElementById('setlist-event-title');
+  const placeEl = document.getElementById('setlist-event-place');
+  if (titleEl) titleEl.textContent = nextEvent
+    ? `${formatEventDate(nextEvent.date)} ${nextEvent.time || ''}`.trim()
+    : '등록된 일정 없음';
+  if (placeEl) placeEl.textContent = nextEvent
+    ? `${nextEvent.title}${nextEvent.place ? ' · ' + nextEvent.place : ''}`
+    : '리더가 일정을 등록하면 표시됩니다';
+
   const el = document.getElementById('setlist-list');
   const songs = setlist.map(id => SONGS.find(s => s.id === id)).filter(Boolean);
   el.innerHTML = songs.length ? songs.map((s,i) => `
@@ -2164,13 +2194,12 @@ async function scanCompetitionNotice() {
 }
 
 async function searchCurrentCompetitions() {
-  const [verified, mule, feeds] = await Promise.all([
-    Promise.resolve(getVerifiedCompetitionItems()),
+  const [mule, feeds] = await Promise.all([
     fetchMuleCompetitions().catch(() => []),
     Promise.allSettled(COMPETITION_SEARCH_QUERIES.map(fetchCompetitionFeed)),
   ]);
   const newsItems = feeds.flatMap(result => result.status === 'fulfilled' ? result.value : []);
-  const items = [...verified, ...mule, ...newsItems];
+  const items = [...mule, ...newsItems];
   const seen = new Set();
   return items
     .map(item => item.status ? item : buildCompetitionFromSearchItem(item))
