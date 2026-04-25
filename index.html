@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#20233F">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -69,6 +69,14 @@ body.dark-mode {
 
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
+html {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--c-bg);
+  overscroll-behavior: none;
+}
+
 body {
   font-family: var(--font-family);
   background: var(--c-bg);
@@ -77,7 +85,15 @@ body {
   font-size: 15px;
   display: flex;
   justify-content: center;
+  width: 100%;
+  height: 100%;
   min-height: 100vh;
+  min-height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
+  position: fixed;
+  inset: 0;
+  touch-action: manipulation;
 }
 
 .app-container {
@@ -88,7 +104,9 @@ body {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
+  overscroll-behavior: none;
   box-shadow: 0 0 40px rgba(0,0,0,0.08);
 }
 
@@ -138,6 +156,8 @@ h3 { font-size: 15px; font-weight: 600; }
 .page {
   position: absolute; inset: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   padding: var(--space-4) var(--space-4) 96px;
   display: none;
   flex-direction: column;
