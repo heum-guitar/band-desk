@@ -1063,7 +1063,7 @@ function isSampleCompetitionTitle(value) {
 
 function removeSampleCompetitions(items) {
   return (items || [])
-    .filter(item => !isSampleCompetitionTitle(item.title))
+    .filter(item => item.sourceType === 'verified' || !isSampleCompetitionTitle(item.title))
     .filter(item => !isOutdatedSearchCompetition(item))
     .filter(item => !hasOnlyPastYear(item.title));
 }
@@ -1694,12 +1694,13 @@ function renderSetlistView() {
 
 function toggleSetlist(songId) {
   if (!requireLeader()) return;
-  setlist = setlist.includes(songId) ? setlist.filter(id => id !== songId) : [...setlist, songId];
+  const wasInSetlist = setlist.includes(songId);
+  setlist = wasInSetlist ? setlist.filter(id => id !== songId) : [...setlist, songId];
   saveAppState();
   renderLibrary();
   renderSetlistView();
   renderHome();
-  showToast(setlist.includes(songId) ? '합주곡 목록에서 제거했습니다' : '합주곡에 추가했습니다');
+  showToast(wasInSetlist ? '합주곡 목록에서 제거했습니다' : '합주곡에 추가했습니다');
 }
 
 function togglePlay(songId) {
@@ -1728,11 +1729,11 @@ function togglePlay(songId) {
 function openSheet(songId) {
   const s = SONGS.find(x => x.id === songId);
   showModal(`
-    <div class="modal-title">${s.title} — 악보</div>
+    <div class="modal-title">${escapeHtml(s.title)} — 악보</div>
     <div style="background:var(--c-orange-pale);border-radius:var(--radius-md);padding:var(--space-8);text-align:center;margin-bottom:var(--space-5)">
       <div style="font-size:48px;margin-bottom:var(--space-3)">🎼</div>
-      <div style="font-weight:700;font-size:16px">${s.title}</div>
-      <div style="font-size:13px;color:var(--c-text-muted);margin-top:4px">${s.artist}</div>
+      <div style="font-weight:700;font-size:16px">${escapeHtml(s.title)}</div>
+      <div style="font-size:13px;color:var(--c-text-muted);margin-top:4px">${escapeHtml(s.artist)}</div>
       <div style="margin-top:var(--space-4);font-size:12px;color:var(--c-text-muted)">실제 앱에서는 PDF 악보가 여기에 표시됩니다</div>
     </div>
     <div style="display:flex;gap:var(--space-3)">
@@ -1892,6 +1893,7 @@ function showDayDetail(key) {
   const el = document.getElementById('cal-detail-members');
   el.innerHTML = sc.length ? sc.map(id => {
     const mm = MEMBERS.find(x => x.id===id);
+    if (!mm) return '';
     return `
       <div class="member-row">
         <div class="member-av" style="background:${mm.color}">${mm.short}</div>
@@ -2197,12 +2199,13 @@ async function scanCompetitionNotice() {
 }
 
 async function searchCurrentCompetitions() {
+  const verified = getVerifiedCompetitionItems();
   const [mule, feeds] = await Promise.all([
     fetchMuleCompetitions().catch(() => []),
     Promise.allSettled(COMPETITION_SEARCH_QUERIES.map(fetchCompetitionFeed)),
   ]);
   const newsItems = feeds.flatMap(result => result.status === 'fulfilled' ? result.value : []);
-  const items = [...mule, ...newsItems];
+  const items = [...verified, ...mule, ...newsItems];
   const seen = new Set();
   return items
     .map(item => item.status ? item : buildCompetitionFromSearchItem(item))
@@ -2650,13 +2653,13 @@ function openEditSong(songId) {
   showModal(`
     <div class="modal-title">곡 자료 수정</div>
     <div style="padding:var(--space-3);background:var(--c-bg);border-radius:var(--radius-md);margin-bottom:var(--space-5)">
-      <div style="font-weight:700">${song.title}</div>
-      <div style="font-size:13px;color:var(--c-text-muted);margin-top:2px">${song.artist || '아티스트 미입력'}</div>
+      <div style="font-weight:700">${escapeHtml(song.title)}</div>
+      <div style="font-size:13px;color:var(--c-text-muted);margin-top:2px">${escapeHtml(song.artist) || '아티스트 미입력'}</div>
     </div>
     <div class="form-group">
       <label class="form-label">MP3 상태</label>
       <select class="form-select" id="edit-mp3-state">
-        <option value="keep" ${song.mp3?'selected':''}>현재 상태 유지${song.mp3 ? ` · ${song.mp3Name || 'MP3 있음'}` : ' · 없음'}</option>
+        <option value="keep" ${song.mp3?'selected':''}>현재 상태 유지${song.mp3 ? ` · ${escapeHtml(song.mp3Name) || 'MP3 있음'}` : ' · 없음'}</option>
         <option value="remove">MP3 제거</option>
         <option value="add">새 MP3 넣기</option>
       </select>
@@ -2668,7 +2671,7 @@ function openEditSong(songId) {
     <div class="form-group">
       <label class="form-label">악보 상태</label>
       <select class="form-select" id="edit-sheet-state">
-        <option value="keep" ${song.sheet?'selected':''}>현재 상태 유지${song.sheet ? ` · ${song.sheetName || '악보 있음'}` : ' · 없음'}</option>
+        <option value="keep" ${song.sheet?'selected':''}>현재 상태 유지${song.sheet ? ` · ${escapeHtml(song.sheetName) || '악보 있음'}` : ' · 없음'}</option>
         <option value="remove">악보 제거</option>
         <option value="add">새 악보 넣기</option>
       </select>
