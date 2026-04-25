@@ -3,7 +3,7 @@
   "short_name": "Band Desk",
   "description": "밴드 리더와 멤버를 위한 합주, 곡, 대회 정보 관리 앱",
   "lang": "ko-KR",
-  "start_url": "./index.html?source=pwa&v=2026-04-25-07",
+  "start_url": "./index.html?source=pwa&v=2026-04-25-08",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
@@ -23,14 +23,14 @@
       "name": "대회 정보",
       "short_name": "대회",
       "description": "대회 공고 목록을 확인합니다.",
-      "url": "./index.html?source=pwa&v=2026-04-25-07#competition",
+      "url": "./index.html?source=pwa&v=2026-04-25-08#competition",
       "icons": [{ "src": "./icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
     },
     {
       "name": "합주 일정",
       "short_name": "일정",
       "description": "합주와 공연 일정을 확인합니다.",
-      "url": "./index.html?source=pwa&v=2026-04-25-07#calendar",
+      "url": "./index.html?source=pwa&v=2026-04-25-08#calendar",
       "icons": [{ "src": "./icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
     }
   ]

@@ -1,4 +1,4 @@
-const CACHE_NAME = "band-desk-pwa-v7";
+const CACHE_NAME = "band-desk-pwa-v8";
 const APP_SHELL = [
   "./",
   "./index.html",
