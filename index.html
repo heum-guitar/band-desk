@@ -14,8 +14,9 @@
 <link rel="manifest" href="./manifest.json">
 <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="./icons/icon.svg">
-<script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
@@ -902,7 +903,7 @@ let refreshingForUpdate = false;
 const LOGIN_KEY = 'bandDeskCurrentUserId';
 const APP_STATE_KEY = 'bandDeskAppStateV1';
 const THEME_KEY = 'bandDeskTheme';
-const APP_BUILD = '2026-04-26-14';
+const APP_BUILD = '2026-04-26-15';
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyDlG00JPma_ThM2omg5WAfYMUavd6F5xVk",
   authDomain: "heum-band.firebaseapp.com",
@@ -914,9 +915,14 @@ const FIREBASE_CONFIG = {
 const CLOUD_STATE_COLLECTION = 'bandDesk';
 const CLOUD_STATE_DOC = 'sharedState';
 let cloudDb = null;
+let cloudDocRef = null;
 let cloudSaveTimer = null;
 let applyingRemoteState = false;
 let cloudConnectedOnce = false;
+let cloudReady = false;
+let cloudSavePending = false;
+let lastLocalSavedAt = 0;
+let lastAppliedRemoteSavedAt = 0;
 
 function dateKey(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
@@ -1039,8 +1045,20 @@ function getAppState() {
   };
 }
 
+function makeCloudPayload(state = getAppState()) {
+  const savedAt = lastLocalSavedAt || Date.now();
+  lastLocalSavedAt = Math.max(lastLocalSavedAt, savedAt);
+  return {
+    state,
+    savedAt,
+    appBuild: APP_BUILD,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+  };
+}
+
 function saveAppState() {
   const state = getAppState();
+  lastLocalSavedAt = Date.now();
   localStorage.setItem(APP_STATE_KEY, JSON.stringify(state));
   queueCloudSave(state);
 }
@@ -1123,47 +1141,69 @@ function refreshVisibleData() {
   updateLeaderControls();
 }
 
-function queueCloudSave(state) {
-  if (!cloudDb || applyingRemoteState) return;
+function queueCloudSave(state = getAppState()) {
+  if (applyingRemoteState) return;
+  cloudSavePending = true;
+  if (!cloudDocRef || !cloudReady) return;
   clearTimeout(cloudSaveTimer);
   cloudSaveTimer = setTimeout(() => {
-    cloudDb.collection(CLOUD_STATE_COLLECTION).doc(CLOUD_STATE_DOC).set({
-      state,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-    }, { merge: true }).catch(() => {
-      showToast('공유 저장에 실패했습니다. 로컬에는 저장됐습니다');
-    });
-  }, 350);
+    cloudSavePending = false;
+    cloudDocRef.set(makeCloudPayload(state), { merge: true })
+      .then(() => {
+        if (cloudConnectedOnce) showToast('공유 저장 완료');
+      })
+      .catch(error => {
+        console.error('Cloud save failed:', error);
+        cloudSavePending = true;
+        showToast(`공유 저장 실패: ${error.code || '연결 확인'}`);
+      });
+  }, 150);
 }
 
-function initCloudSync() {
-  if (!window.firebase) return;
+async function initCloudSync() {
+  if (!window.firebase) {
+    showToast('Firebase 스크립트를 불러오지 못했습니다');
+    return;
+  }
   try {
-    firebase.initializeApp(FIREBASE_CONFIG);
+    if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    if (firebase.auth) {
+      await firebase.auth().signInAnonymously().catch(error => {
+        console.warn('Anonymous auth failed:', error);
+      });
+    }
     cloudDb = firebase.firestore();
-    cloudDb.enablePersistence({ synchronizeTabs: true }).catch(() => {});
-    cloudDb.collection(CLOUD_STATE_COLLECTION).doc(CLOUD_STATE_DOC).onSnapshot(snapshot => {
+    cloudDocRef = cloudDb.collection(CLOUD_STATE_COLLECTION).doc(CLOUD_STATE_DOC);
+    cloudReady = true;
+    if (cloudSavePending) queueCloudSave(getAppState());
+    cloudDocRef.onSnapshot(snapshot => {
       if (!snapshot.exists) {
         queueCloudSave(getAppState());
         return;
       }
-      const remoteState = snapshot.data()?.state;
+      const remoteData = snapshot.data() || {};
+      const remoteState = remoteData.state;
       if (!remoteState) return;
+      const remoteSavedAt = Number(remoteData.savedAt || 0);
+      if ((cloudSavePending && lastLocalSavedAt) || (remoteSavedAt && remoteSavedAt < lastLocalSavedAt)) return;
       applyingRemoteState = true;
       applyAppState(remoteState);
       syncCompetitionData();
       localStorage.setItem(APP_STATE_KEY, JSON.stringify(getAppState()));
       applyingRemoteState = false;
+      lastAppliedRemoteSavedAt = Math.max(lastAppliedRemoteSavedAt, remoteSavedAt);
       refreshVisibleData();
       if (!cloudConnectedOnce) {
         cloudConnectedOnce = true;
         showToast('공유 데이터에 연결됐습니다');
       }
-    }, () => {
-      showToast('공유 데이터 연결에 실패했습니다');
+    }, error => {
+      console.error('Cloud sync failed:', error);
+      showToast(`공유 연결 실패: ${error.code || '권한/네트워크 확인'}`);
     });
-  } catch {
-    showToast('Firebase 연결을 시작하지 못했습니다');
+  } catch (error) {
+    console.error('Firebase init failed:', error);
+    showToast(`Firebase 시작 실패: ${error.code || '설정 확인'}`);
   }
 }
 
