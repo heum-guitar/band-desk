@@ -949,7 +949,10 @@ function isCoverSong(song) {
 }
 
 function syncCompetitionData() {
-  const openCompetitions = removeSampleCompetitions(COMPETITIONS).filter(isCompetitionOpen);
+  const openCompetitions = mergeCompetitionItems([
+    ...getVerifiedCompetitionItems(),
+    ...removeSampleCompetitions(COMPETITIONS),
+  ]).filter(isCompetitionOpen);
   COMPETITIONS.splice(0, COMPETITIONS.length, ...openCompetitions);
   const openIds = new Set(COMPETITIONS.map(c => String(c.id)));
   const hiddenIds = new Set(hiddenCompetitionNoticeIds.map(String));
@@ -965,6 +968,16 @@ function syncCompetitionData() {
     ...competitionNotices,
     ...removeSampleCompetitionNotices(notices).filter(n => n.type !== 'competition'),
   ];
+}
+
+function mergeCompetitionItems(items) {
+  const seen = new Set();
+  return (items || []).filter(item => {
+    const key = normalizeCompetitionKey(item.title, item.url);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function getDDayLabel(dateValue) {
@@ -1940,8 +1953,54 @@ const COMPETITION_SEARCH_QUERIES = [
   '실용음악 경연대회 밴드 모집',
   '버스킹 대회 밴드 모집',
 ];
+const MULE_COMPETITION_URLS = [
+  'https://www.mule.co.kr/bbs/info/contest',
+  'https://www.mule.co.kr/bbs/lesson/contest',
+];
+const VERIFIED_COMPETITION_ITEMS = [
+  {
+    id: 'verified-after-work-rock-2026',
+    sourceType: 'verified',
+    status: 'open',
+    title: '2026 직장인 밴드 경연대회 퇴근 후 락',
+    organizer: '인천사랑운동센터',
+    date: '2026. 06. 07 15:00',
+    deadline: '2026. 05. 10',
+    venue: '인천문화예술회관 소극장',
+    prize: '총상금 4,500,000원',
+    url: 'https://www.mule.co.kr/bbs/lesson/contest?idx=68276923&v=v',
+    desc: '직장인, 사회인, 동호회 밴드 대상 경연입니다. 라이브 합주 또는 공연 영상 URL 제출이 필요합니다.',
+  },
+  {
+    id: 'verified-gwangju-busking-worldcup-2026',
+    sourceType: 'verified',
+    status: 'open',
+    title: '2026 제5회 광주버스킹월드컵',
+    organizer: '광주광역시 동구청 / 광주동구문화관광재단',
+    date: '2026. 10. 07 ~ 10. 11',
+    deadline: '2026. 05. 31',
+    venue: '광주 충장로 일원',
+    prize: '총상금 2,000만원',
+    url: 'https://www.buskingworldcup.com/',
+    desc: '국내외 뮤지션과 공연팀을 모집하는 글로벌 버스킹 음악 경연대회입니다.',
+  },
+  {
+    id: 'verified-ulsan-street-music-2026',
+    sourceType: 'verified',
+    status: 'open',
+    title: '제4회 울산 중구 전국거리음악대회',
+    organizer: '울산광역시 중구',
+    date: '2026. 06. 20 ~ 06. 21',
+    deadline: '2026. 04. 26',
+    venue: '울산 중구 성남동 일원',
+    prize: '총상금 1,800만원',
+    url: 'https://www.mule.co.kr/bbs/info/contest?idx=68067343&v=v',
+    desc: '전국 음악 버스커 개인 또는 팀 참가가 가능한 거리음악 경연입니다.',
+  },
+];
 
 function renderCompetitions() {
+  syncCompetitionData();
   const list = document.getElementById('competition-list');
   if (!COMPETITIONS.length) {
     list.innerHTML = `
@@ -2018,12 +2077,18 @@ async function scanCompetitionNotice() {
 }
 
 async function searchCurrentCompetitions() {
-  const feeds = await Promise.allSettled(COMPETITION_SEARCH_QUERIES.map(fetchCompetitionFeed));
-  const items = feeds.flatMap(result => result.status === 'fulfilled' ? result.value : []);
+  const [verified, mule, feeds] = await Promise.all([
+    Promise.resolve(getVerifiedCompetitionItems()),
+    fetchMuleCompetitions().catch(() => []),
+    Promise.allSettled(COMPETITION_SEARCH_QUERIES.map(fetchCompetitionFeed)),
+  ]);
+  const newsItems = feeds.flatMap(result => result.status === 'fulfilled' ? result.value : []);
+  const items = [...verified, ...mule, ...newsItems];
   const seen = new Set();
   return items
-    .map(item => buildCompetitionFromSearchItem(item))
+    .map(item => item.status ? item : buildCompetitionFromSearchItem(item))
     .filter(Boolean)
+    .filter(isCompetitionOpen)
     .filter(item => {
       const key = normalizeCompetitionKey(item.title, item.url);
       if (seen.has(key)) return false;
@@ -2031,6 +2096,54 @@ async function searchCurrentCompetitions() {
       return true;
     })
     .slice(0, 8);
+}
+
+function getVerifiedCompetitionItems() {
+  return VERIFIED_COMPETITION_ITEMS
+    .map(item => ({ ...item, foundAt: new Date().toISOString() }))
+    .filter(isCompetitionOpen);
+}
+
+async function fetchMuleCompetitions() {
+  const lists = await Promise.allSettled(MULE_COMPETITION_URLS.map(fetchMuleCompetitionList));
+  const candidates = lists
+    .flatMap(result => result.status === 'fulfilled' ? result.value : [])
+    .filter(isRelevantCompetitionResult)
+    .slice(0, 12);
+  const details = await Promise.allSettled(candidates.map(fetchMuleCompetitionDetail));
+  return details
+    .map((result, index) => result.status === 'fulfilled' ? result.value : buildCompetitionFromSearchItem(candidates[index]))
+    .filter(Boolean);
+}
+
+async function fetchMuleCompetitionList(url) {
+  const text = await fetchTextWithProxy(url, 9000);
+  const doc = new DOMParser().parseFromString(text, 'text/html');
+  return [...doc.querySelectorAll('a[href*="contest"]')]
+    .map(link => {
+      const title = cleanText(link.textContent);
+      const href = link.getAttribute('href') || '';
+      const rowText = cleanText(link.closest('tr, li, div')?.textContent || title);
+      return {
+        title,
+        url: toAbsoluteUrl(href, 'https://www.mule.co.kr'),
+        source: '중고악기 뮬',
+        publishedAt: '',
+        summary: rowText,
+      };
+    })
+    .filter(item => item.title.length > 8 && item.url.includes('mule.co.kr'))
+    .filter(item => !/공지|오디션은 공개오디션|페이는 정확하게/.test(item.title));
+}
+
+async function fetchMuleCompetitionDetail(item) {
+  const text = await fetchTextWithProxy(item.url, 9000);
+  const doc = new DOMParser().parseFromString(text, 'text/html');
+  const pageText = cleanText(doc.body?.textContent || item.summary);
+  return buildCompetitionFromSearchItem({
+    ...item,
+    summary: pageText.slice(0, 1800),
+  });
 }
 
 async function fetchCompetitionFeed(query) {
@@ -2049,10 +2162,10 @@ async function fetchCompetitionFeed(query) {
   })).filter(isFreshSearchItem).filter(isRelevantCompetitionResult);
 }
 
-async function fetchTextWithProxy(url) {
+async function fetchTextWithProxy(url, timeout = 12000) {
   const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 12000);
+  const timer = setTimeout(() => controller.abort(), timeout);
   try {
     const response = await fetch(proxyUrl, { cache: 'no-store', signal: controller.signal });
     if (!response.ok) throw new Error(`검색 서버 응답 오류: ${response.status}`);
@@ -2066,8 +2179,10 @@ function buildCompetitionFromSearchItem(item) {
   const combined = `${item.title} ${item.summary}`;
   const deadline = inferDeadline(combined);
   const parsedDeadline = parseDeadlineDate(deadline);
+  const sourceType = item.sourceType || (String(item.url || '').includes('mule.co.kr') ? 'mule' : 'search');
   return {
     id: hashString(`${item.title}|${item.url}`),
+    sourceType,
     foundAt: new Date().toISOString(),
     sourcePublishedAt: item.publishedAt,
     status: !parsedDeadline || parsedDeadline >= dateKey(new Date()) ? 'open' : 'planned',
@@ -2084,8 +2199,10 @@ function buildCompetitionFromSearchItem(item) {
 
 function isRelevantCompetitionResult(item) {
   const text = `${item.title} ${item.summary}`;
+  const title = String(item.title || '');
   return /밴드|실용음악|버스킹|음악|가요|락|록/i.test(text)
     && /대회|경연|공모|모집|접수|콘테스트/i.test(text)
+    && !/모집완료|\[마감\]|\(마감\)|게시중단|임시조치/i.test(title)
     && !hasOnlyPastYear(text);
 }
 
@@ -2112,6 +2229,18 @@ function cleanFeedTitle(value) {
 function stripHtml(value) {
   const doc = new DOMParser().parseFromString(String(value || ''), 'text/html');
   return (doc.body.textContent || '').replace(/\s+/g, ' ').trim();
+}
+
+function cleanText(value) {
+  return String(value || '').replace(/\s+/g, ' ').trim();
+}
+
+function toAbsoluteUrl(value, base) {
+  try {
+    return new URL(value, base).href;
+  } catch {
+    return '';
+  }
 }
 
 function inferDeadline(text) {
