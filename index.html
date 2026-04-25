@@ -49,12 +49,16 @@
   --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
-  --nav-safe-bottom: max(6px, calc(env(safe-area-inset-bottom, 0px) - 22px));
+  --nav-safe-bottom: max(10px, env(safe-area-inset-bottom, 0px));
   --app-height: 100vh;
 }
 
 @supports (height: 100dvh) {
   :root { --app-height: 100dvh; }
+}
+
+@supports (height: 100lvh) {
+  :root { --app-height: 100lvh; }
 }
 
 body.dark-mode {
@@ -170,7 +174,7 @@ h3 { font-size: 15px; font-weight: 600; }
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
-  padding: var(--space-4) var(--space-4) 96px;
+  padding: var(--space-4) var(--space-4) calc(96px + var(--safe-bottom));
   display: none;
   flex-direction: column;
   gap: var(--space-4);
@@ -314,7 +318,12 @@ body.dark-mode .list-item.cover-song {
 
 /* ── Bottom Nav ── */
 .bottom-nav {
-  position: absolute; bottom: 0; left: 0; width: 100%;
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 428px;
   background: var(--c-surface); border-top: 1px solid var(--c-border);
   display: flex; justify-content: space-around;
   padding: 6px 0 var(--nav-safe-bottom);
@@ -332,9 +341,9 @@ body.dark-mode .list-item.cover-song {
 
 /* ── FAB ── */
 .fab {
-  position: absolute;
+  position: fixed;
   bottom: calc(72px + var(--nav-safe-bottom));
-  right: var(--space-4);
+  right: max(var(--space-4), calc((100vw - 428px) / 2 + var(--space-4)));
   width: 52px; height: 52px; border-radius: 50%;
   background: var(--c-blue-dark); color: white;
   border: none; display: flex; align-items: center; justify-content: center;
@@ -479,13 +488,14 @@ body.dark-mode .list-item.cover-song {
 
 /* ── Modal ── */
 .modal-overlay {
-  position: absolute; inset: 0;
+  position: fixed; inset: 0;
   background: rgba(0,0,0,0.45); z-index: 50;
   display: none; align-items: flex-end;
+  justify-content: center;
 }
 .modal-overlay.open { display: flex; }
 .modal-sheet {
-  width: 100%; background: var(--c-surface);
+  width: 100%; max-width: 428px; background: var(--c-surface);
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   padding: var(--space-6) var(--space-4) calc(var(--space-6) + var(--safe-bottom));
   animation: slideUp 0.28s ease; max-height: 92vh; overflow-y: auto;
@@ -517,7 +527,7 @@ body.dark-mode .list-item.cover-song {
 
 /* ── Toast ── */
 .toast {
-  position: absolute; top: 72px; left: 50%; transform: translateX(-50%);
+  position: fixed; top: calc(72px + var(--safe-top)); left: 50%; transform: translateX(-50%);
   background: var(--c-blue-dark); color: white;
   padding: 10px 20px; border-radius: var(--radius-pill);
   font-size: 13px; font-weight: 600; z-index: 100;
@@ -544,7 +554,12 @@ svg { fill: currentColor; }
 
 /* ── Login ── */
 #login-screen {
-  position: absolute; inset: 0; z-index: 200;
+  position: fixed;
+  top: 0; bottom: 0; left: 50%;
+  transform: translateX(-50%);
+  width: 100%; max-width: 428px;
+  min-height: var(--app-height);
+  z-index: 200;
   background: linear-gradient(160deg, var(--c-blue-dark) 0%, var(--c-blue-base) 70%, #8B5CF6 100%);
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
@@ -904,7 +919,7 @@ let refreshingForUpdate = false;
 const LOGIN_KEY = 'bandDeskCurrentUserId';
 const APP_STATE_KEY = 'bandDeskAppStateV1';
 const THEME_KEY = 'bandDeskTheme';
-const APP_BUILD = '2026-04-26-10';
+const APP_BUILD = '2026-04-26-11';
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyDlG00JPma_ThM2omg5WAfYMUavd6F5xVk",
   authDomain: "heum-band.firebaseapp.com",
@@ -922,7 +937,20 @@ let cloudConnectedOnce = false;
 
 function syncAppViewportHeight() {
   const viewport = window.visualViewport;
-  const height = Math.ceil(viewport?.height || window.innerHeight || document.documentElement.clientHeight);
+  const isStandalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+  const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const heightCandidates = [
+    window.innerHeight,
+    document.documentElement.clientHeight,
+    viewport?.height,
+  ].filter(Boolean);
+
+  if (isStandalone && isIOS) {
+    heightCandidates.push(window.screen.height, window.screen.availHeight);
+  }
+
+  const height = Math.ceil(Math.max(...heightCandidates));
   if (height > 0) document.documentElement.style.setProperty('--app-height', `${height}px`);
 }
 
