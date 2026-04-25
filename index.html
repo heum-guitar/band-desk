@@ -50,16 +50,6 @@
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --nav-safe-bottom: max(10px, env(safe-area-inset-bottom, 0px));
-  --app-height: 100vh;
-  --viewport-bottom-gap: 0px;
-}
-
-@supports (height: 100dvh) {
-  :root { --app-height: 100dvh; }
-}
-
-@supports (height: 100lvh) {
-  :root { --app-height: 100lvh; }
 }
 
 body.dark-mode {
@@ -88,27 +78,26 @@ body.dark-mode {
 html {
   width: 100%;
   height: 100%;
+  height: -webkit-fill-available;
   overflow: hidden;
-  background: var(--c-bg);
+  background: var(--c-surface);
   overscroll-behavior: none;
 }
 
 body {
   font-family: var(--font-family);
-  background: var(--c-bg);
+  background: var(--c-surface);
   color: var(--c-text-main);
   line-height: 1.5;
   font-size: 15px;
   display: flex;
   justify-content: center;
   width: 100%;
-  height: var(--app-height);
-  min-height: var(--app-height);
-  max-height: var(--app-height);
+  height: 100%;
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
   overflow: hidden;
   overscroll-behavior: none;
-  position: fixed;
-  inset: 0;
   touch-action: manipulation;
 }
 
@@ -119,12 +108,20 @@ body {
   position: relative;
   display: flex;
   flex-direction: column;
-  height: var(--app-height);
-  min-height: var(--app-height);
-  max-height: var(--app-height);
+  height: 100vh;
+  height: 100dvh;
+  min-height: 100vh;
+  min-height: 100dvh;
   overflow: hidden;
   overscroll-behavior: none;
   box-shadow: 0 0 40px rgba(0,0,0,0.08);
+}
+
+@supports (-webkit-touch-callout: none) {
+  .app-container {
+    height: -webkit-fill-available;
+    min-height: -webkit-fill-available;
+  }
 }
 
 /* ── Header ── */
@@ -175,7 +172,7 @@ h3 { font-size: 15px; font-weight: 600; }
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
-  padding: var(--space-4) var(--space-4) calc(96px + var(--safe-bottom));
+  padding: var(--space-4) var(--space-4) var(--space-4);
   display: none;
   flex-direction: column;
   gap: var(--space-4);
@@ -319,16 +316,13 @@ body.dark-mode .list-item.cover-song {
 
 /* ── Bottom Nav ── */
 .bottom-nav {
-  position: fixed;
-  bottom: calc(0px - var(--viewport-bottom-gap));
-  left: 50%;
-  transform: translateX(-50%);
+  position: relative;
   width: 100%;
-  max-width: 428px;
   background: var(--c-surface); border-top: 1px solid var(--c-border);
   display: flex; justify-content: space-around;
-  padding: 6px 0 calc(var(--nav-safe-bottom) + var(--viewport-bottom-gap));
+  padding: 6px 0 var(--nav-safe-bottom);
   z-index: 20;
+  flex-shrink: 0;
 }
 .nav-item {
   display: flex; flex-direction: column; align-items: center; gap: 3px;
@@ -342,9 +336,9 @@ body.dark-mode .list-item.cover-song {
 
 /* ── FAB ── */
 .fab {
-  position: fixed;
+  position: absolute;
   bottom: calc(72px + var(--nav-safe-bottom));
-  right: max(var(--space-4), calc((100vw - 428px) / 2 + var(--space-4)));
+  right: var(--space-4);
   width: 52px; height: 52px; border-radius: 50%;
   background: var(--c-blue-dark); color: white;
   border: none; display: flex; align-items: center; justify-content: center;
@@ -555,16 +549,13 @@ svg { fill: currentColor; }
 
 /* ── Login ── */
 #login-screen {
-  position: fixed;
-  top: 0; bottom: calc(0px - var(--viewport-bottom-gap)); left: 50%;
-  transform: translateX(-50%);
-  width: 100%; max-width: 428px;
-  min-height: var(--app-height);
+  position: absolute;
+  inset: 0;
   z-index: 200;
   background: linear-gradient(160deg, var(--c-blue-dark) 0%, var(--c-blue-base) 70%, #8B5CF6 100%);
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  padding: calc(var(--space-8) + var(--safe-top)) var(--space-8) calc(var(--space-8) + var(--safe-bottom) + var(--viewport-bottom-gap));
+  padding: calc(var(--space-8) + var(--safe-top)) var(--space-8) calc(var(--space-8) + var(--safe-bottom));
   transition: opacity 0.4s;
 }
 .login-logo {
@@ -920,7 +911,7 @@ let refreshingForUpdate = false;
 const LOGIN_KEY = 'bandDeskCurrentUserId';
 const APP_STATE_KEY = 'bandDeskAppStateV1';
 const THEME_KEY = 'bandDeskTheme';
-const APP_BUILD = '2026-04-26-12';
+const APP_BUILD = '2026-04-26-13';
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyDlG00JPma_ThM2omg5WAfYMUavd6F5xVk",
   authDomain: "heum-band.firebaseapp.com",
@@ -935,32 +926,6 @@ let cloudDb = null;
 let cloudSaveTimer = null;
 let applyingRemoteState = false;
 let cloudConnectedOnce = false;
-
-function syncAppViewportHeight() {
-  const viewport = window.visualViewport;
-  const isStandalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
-  const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent)
-    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  const viewportHeights = [
-    window.innerHeight,
-    document.documentElement.clientHeight,
-    viewport?.height,
-  ].filter(Boolean);
-  const viewportHeight = Math.ceil(Math.max(...viewportHeights));
-  const fixedViewportHeight = Math.ceil(Math.min(...viewportHeights));
-  const screenHeight = Math.ceil(Math.max(window.screen.height || 0, window.screen.availHeight || 0));
-  const height = isStandalone && isIOS ? Math.max(viewportHeight, screenHeight) : viewportHeight;
-  const bottomGap = isStandalone && isIOS ? Math.min(160, Math.max(0, height - fixedViewportHeight)) : 0;
-
-  if (height > 0) document.documentElement.style.setProperty('--app-height', `${height}px`);
-  document.documentElement.style.setProperty('--viewport-bottom-gap', `${bottomGap}px`);
-}
-
-syncAppViewportHeight();
-window.addEventListener('resize', syncAppViewportHeight, { passive: true });
-window.addEventListener('orientationchange', () => setTimeout(syncAppViewportHeight, 250), { passive: true });
-window.visualViewport?.addEventListener('resize', syncAppViewportHeight, { passive: true });
-window.visualViewport?.addEventListener('scroll', syncAppViewportHeight, { passive: true });
 
 function dateKey(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
