@@ -620,13 +620,13 @@ svg { fill: currentColor; }
     <!-- ══════════ HOME ══════════ -->
     <div class="page active" id="page-home">
 
-      <div class="alert-banner" onclick="navigateTo('competition')">
+      <div class="alert-banner" id="competition-alert" onclick="navigateTo('competition')">
         <div class="alert-icon">
           <svg width="16" height="16" viewBox="0 0 24 24"><path d="M11 15h2v2h-2zm0-8h2v6h-2zm.99-5C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"/></svg>
         </div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:11px;font-weight:600;letter-spacing:.5px;color:rgba(255,255,255,.8)">대회 알람 · 새 공고</div>
-          <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">청소년 밴드 경연대회 접수 시작</div>
+          <div style="font-size:11px;font-weight:600;letter-spacing:.5px;color:rgba(255,255,255,.8)">대회 알람</div>
+          <div id="competition-alert-title" style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">새 대회 공고를 확인하세요</div>
         </div>
         <svg width="16" height="16" viewBox="0 0 24 24" style="flex-shrink:0"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
       </div>
@@ -681,7 +681,7 @@ svg { fill: currentColor; }
           </div>
           <div>
             <div class="action-title">대회 정보</div>
-            <div class="action-desc">2개 대회 접수 중</div>
+            <div class="action-desc" id="competition-action-desc">등록된 대회 없음</div>
           </div>
         </div>
       </div>
@@ -830,47 +830,16 @@ const SONGS = [
 let setlist = SONGS.map(s => s.id);
 
 let notices = [
-  { id:2026042503, type:'competition', title:'제4회 울산 중구 전국거리음악대회 공고', content:'접수 마감은 2026년 4월 26일입니다. 전국 음악 버스커 개인 또는 팀 참가가 가능하며 총상금 1,800만원 규모입니다.', author:'Band Desk', date:'04.25', pinned:true },
-  { id:2026042502, type:'competition', title:'2026 제5회 광주버스킹월드컵 공고', content:'접수 마감은 2026년 5월 31일입니다. 국내외 뮤지션 공연팀 모집 공고이며 총상금 2,000만원 규모입니다.', author:'Band Desk', date:'04.25', pinned:true },
-  { id:2026042501, type:'competition', title:'2026 퇴근 후 락 樂 공고', content:'접수 마감은 2026년 5월 10일 자정입니다. 직장인·사회인·동호회 밴드 참가가 가능합니다.', author:'Band Desk', date:'04.25', pinned:true },
   { id:1, type:'schedule',    title:'10월 정기 합주 안내',            content:'10월 28일 토요일 오후 2시, 홍대 A스튜디오 3번방에서 정기 합주를 진행합니다. 늦지 않게 참석 부탁드립니다.',  author:'조진흠', date:'10.20', pinned:true  },
   { id:3, type:'general',     title:'Hysteria 악보 구합니다',          content:'악보 파일 구하고 계신 분 있으면 공유 부탁드립니다.',                                                        author:'신성용', date:'10.19', pinned:false },
 ];
 
-const COMPETITIONS = [
-  {
-    id:2026042503, status:'open',
-    title:'제4회 울산 중구 전국거리음악대회',
-    organizer:'울산광역시 중구',
-    date:'2026. 06. 20 ~ 06. 21',
-    deadline:'2026. 04. 26',
-    venue:'울산 중구 성남동 일원',
-    prize:'총상금 1,800만원',
-    url:'https://www.mule.co.kr/bbs/info/contest?andor=and&category=&ct1=&ct2=&ct3=&dong=&end_price=&gugun=&idx=68067343&map=list&mode=list&od=desc&of=wdate&options=&page=126&period=6&qf=title_legacy&qs=&region=&sell_status=&sido=&soldout=&start_price=&store=&v=v',
-    desc:'전국 음악 버스커 누구나 개인 또는 팀으로 참가할 수 있는 거리음악 경연입니다. 신청은 온라인 구글폼으로 진행됩니다.',
-  },
-  {
-    id:2026042502, status:'open',
-    title:'2026 제5회 광주버스킹월드컵',
-    organizer:'광주광역시 동구청 / 광주동구문화관광재단',
-    date:'2026. 10. 07 ~ 10. 11',
-    deadline:'2026. 05. 31',
-    venue:'국립아시아문화전당 하늘마당, 5·18민주광장 등 충장로 일원',
-    prize:'총상금 2,000만원 / 1위 1,000만원',
-    url:'https://www.buskingworldcup.com/',
-    desc:'국내외 뮤지션과 공연팀을 모집하는 글로벌 버스킹 음악 경연대회입니다. 특전으로 음원 발매·유통 지원과 차년도 축하공연 초청 등이 안내되어 있습니다.',
-  },
-  {
-    id:2026042501, status:'open',
-    title:'2026 퇴근 후 락 樂',
-    organizer:'인천사랑운동센터 / 인천사랑운동시민협의회',
-    date:'2026. 06. 07 15:00',
-    deadline:'2026. 05. 10',
-    venue:'인천문화예술회관 소극장',
-    prize:'총상금 450만원',
-    url:'https://forms.gle/mCe5isYv22VL81E27',
-    desc:'밴드음악을 사랑하는 직장인·사회인·동호회 밴드 대상 경연입니다. 팀원 전원 성인이어야 하며 라이브 합주 또는 공연 영상 URL 제출이 필요합니다.',
-  },
+const COMPETITIONS = [];
+const SAMPLE_COMPETITION_TITLES = [
+  '제4회 울산 중구 전국거리음악대회',
+  '2026 제5회 광주버스킹월드컵',
+  '2026 퇴근 후 락 樂',
+  '전국 청소년 밴드 챔피언십',
 ];
 
 let tasks = [
@@ -980,11 +949,11 @@ function isCoverSong(song) {
 }
 
 function syncCompetitionData() {
-  const openCompetitions = COMPETITIONS.filter(isCompetitionOpen);
+  const openCompetitions = removeSampleCompetitions(COMPETITIONS).filter(isCompetitionOpen);
   COMPETITIONS.splice(0, COMPETITIONS.length, ...openCompetitions);
   const openIds = new Set(COMPETITIONS.map(c => String(c.id)));
   const hiddenIds = new Set(hiddenCompetitionNoticeIds.map(String));
-  const existingCompetitionNotices = notices.filter(n =>
+  const existingCompetitionNotices = removeSampleCompetitionNotices(notices).filter(n =>
     n.type === 'competition' && openIds.has(String(n.id)) && !hiddenIds.has(String(n.id))
   );
   const existingIds = new Set(existingCompetitionNotices.map(n => String(n.id)));
@@ -994,7 +963,7 @@ function syncCompetitionData() {
   ];
   notices = [
     ...competitionNotices,
-    ...notices.filter(n => n.type !== 'competition'),
+    ...removeSampleCompetitionNotices(notices).filter(n => n.type !== 'competition'),
   ];
 }
 
@@ -1011,6 +980,16 @@ function getDDayLabel(dateValue) {
 function setText(id, value) {
   const element = document.getElementById(id);
   if (element) element.textContent = value;
+}
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, char => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  }[char]));
 }
 
 function applyTheme(theme) {
@@ -1042,15 +1021,42 @@ function saveAppState() {
 }
 
 function mergeCompetitionLists(savedCompetitions) {
-  const seen = new Set(savedCompetitions.map(item => item.id || item.title));
+  const cleanedCompetitions = removeSampleCompetitions(savedCompetitions);
+  const seen = new Set(cleanedCompetitions.map(item => item.id || item.title));
   const newDefaults = COMPETITIONS.filter(item => !seen.has(item.id) && !seen.has(item.title));
-  return [...savedCompetitions, ...newDefaults];
+  return [...cleanedCompetitions, ...newDefaults];
 }
 
 function mergeNoticeLists(savedNotices) {
-  const seen = new Set(savedNotices.map(item => item.id || item.title));
+  const cleanedNotices = removeSampleCompetitionNotices(savedNotices);
+  const seen = new Set(cleanedNotices.map(item => item.id || item.title));
   const newDefaults = notices.filter(item => !seen.has(item.id) && !seen.has(item.title));
-  return [...savedNotices, ...newDefaults];
+  return [...cleanedNotices, ...newDefaults];
+}
+
+function isSampleCompetitionTitle(value) {
+  return SAMPLE_COMPETITION_TITLES.some(title => String(value || '').includes(title));
+}
+
+function removeSampleCompetitions(items) {
+  return (items || [])
+    .filter(item => !isSampleCompetitionTitle(item.title))
+    .filter(item => !isOutdatedSearchCompetition(item))
+    .filter(item => !hasOnlyPastYear(item.title));
+}
+
+function removeSampleCompetitionNotices(items) {
+  return (items || []).filter(item => !(item.type === 'competition' && isSampleCompetitionTitle(item.title)));
+}
+
+function isOutdatedSearchCompetition(item) {
+  if (!String(item?.id || '').startsWith('search-')) return false;
+  if (!item.sourcePublishedAt) return true;
+  const publishedAt = new Date(item.sourcePublishedAt);
+  if (Number.isNaN(publishedAt.getTime())) return true;
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 180);
+  return publishedAt < cutoff;
 }
 
 function applyAppState(state) {
@@ -1318,6 +1324,7 @@ function setThemeFromSettings(theme) {
 // ═══════════════ HOME ═══════════════
 function renderHome() {
   renderNextBandEvent();
+  renderHomeCompetitionSummary();
   // setlist preview
   const sl = document.getElementById('home-setlist');
   const songs = setlist.map(id => SONGS.find(s => s.id === id)).filter(Boolean);
@@ -1358,6 +1365,23 @@ function renderHome() {
   document.getElementById('stat-setlist').textContent = setlist.length;
   document.getElementById('stat-done').textContent = tasks.filter(t => t.done).length;
   updateLeaderControls();
+}
+
+function renderHomeCompetitionSummary() {
+  const alert = document.getElementById('competition-alert');
+  const alertTitle = document.getElementById('competition-alert-title');
+  const actionDesc = document.getElementById('competition-action-desc');
+  const openCompetitions = COMPETITIONS.filter(isCompetitionOpen);
+
+  if (alert) alert.style.display = openCompetitions.length ? 'flex' : 'none';
+  if (alertTitle) {
+    alertTitle.textContent = openCompetitions[0]?.title || '새 대회 공고를 확인하세요';
+  }
+  if (actionDesc) {
+    actionDesc.textContent = openCompetitions.length
+      ? `${openCompetitions.length}개 대회 접수 중`
+      : '등록된 대회 없음';
+  }
 }
 
 function getNextBandEvent() {
@@ -1910,62 +1934,243 @@ function deleteBandEvent(eventId) {
 }
 
 // ═══════════════ COMPETITION ═══════════════
+const COMPETITION_SEARCH_QUERIES = [
+  '밴드 경연대회 접수 모집',
+  '청소년 밴드 경연대회 모집',
+  '실용음악 경연대회 밴드 모집',
+  '버스킹 대회 밴드 모집',
+];
+
 function renderCompetitions() {
-  document.getElementById('competition-list').innerHTML = COMPETITIONS.map((c, index) => `
-    <div class="comp-card ${index % 2 === 0 ? 'warm' : 'cool'}">
-      <div class="comp-header">
-        <div style="font-size:11px;font-weight:600;letter-spacing:.5px;color:rgba(255,255,255,.75);margin-bottom:var(--space-2)">
-          ${c.status==='open'?'🔴  접수 중':'🟡  접수 예정'}
-        </div>
-        <div style="font-size:18px;font-weight:700;margin-bottom:4px">${c.title}</div>
-        <div style="font-size:13px;color:rgba(255,255,255,.75)">${c.organizer}</div>
+  const list = document.getElementById('competition-list');
+  if (!COMPETITIONS.length) {
+    list.innerHTML = `
+      <div class="card" style="text-align:center;padding:var(--space-8) var(--space-4)">
+        <div style="font-size:16px;font-weight:700;margin-bottom:var(--space-2)">등록된 대회 정보가 없습니다</div>
+        <div style="font-size:13px;color:var(--c-text-muted);line-height:1.6">새 대회 공고 확인 버튼을 눌러 현재 검색되는 공고를 가져오세요.</div>
       </div>
-      <div class="comp-body">
-        <div style="font-size:14px;color:var(--c-text-muted);line-height:1.65;margin-bottom:var(--space-4)">${c.desc}</div>
-        <div class="comp-row"><span class="comp-row-label">대회 일자</span><span class="comp-row-value">${c.date}</span></div>
-        <div class="comp-row">
-          <span class="comp-row-label">접수 마감</span>
-          <span class="comp-row-value" style="color:${c.status==='open'?'var(--c-red-base)':'var(--c-text-main)'}">${c.deadline}</span>
+    `;
+    return;
+  }
+  list.innerHTML = COMPETITIONS.map((c, index) => {
+    const safeUrl = encodeURI(String(c.url || '')).replace(/'/g, '%27');
+    return `
+      <div class="comp-card ${index % 2 === 0 ? 'warm' : 'cool'}">
+        <div class="comp-header">
+          <div style="font-size:11px;font-weight:600;letter-spacing:.5px;color:rgba(255,255,255,.75);margin-bottom:var(--space-2)">
+            ${c.status === 'open' ? '접수 중' : '접수 예정'}
+          </div>
+          <div style="font-size:18px;font-weight:700;margin-bottom:4px">${escapeHtml(c.title)}</div>
+          <div style="font-size:13px;color:rgba(255,255,255,.75)">${escapeHtml(c.organizer)}</div>
         </div>
-        <div class="comp-row"><span class="comp-row-label">장소</span><span class="comp-row-value">${c.venue}</span></div>
-        <div class="comp-row"><span class="comp-row-label">시상</span><span class="comp-row-value">${c.prize}</span></div>
-        <button class="btn-primary" style="margin-top:var(--space-4);background:${c.status==='open'?'var(--comp-action)':'var(--c-text-muted)'}"
-                ${c.status!=='open'?'disabled':''} onclick="${c.status==='open'?(c.url?`window.open('${c.url}','_blank','noopener')`:`showToast('참가 신청 페이지로 이동합니다')`):''}" >
-          ${c.status==='open'?'참가 신청하기':'접수 예정'}
-        </button>
+        <div class="comp-body">
+          <div style="font-size:14px;color:var(--c-text-muted);line-height:1.65;margin-bottom:var(--space-4)">${escapeHtml(c.desc)}</div>
+          <div class="comp-row"><span class="comp-row-label">대회 일자</span><span class="comp-row-value">${escapeHtml(c.date)}</span></div>
+          <div class="comp-row">
+            <span class="comp-row-label">접수 마감</span>
+            <span class="comp-row-value" style="color:${c.status === 'open' ? 'var(--c-red-base)' : 'var(--c-text-main)'}">${escapeHtml(c.deadline)}</span>
+          </div>
+          <div class="comp-row"><span class="comp-row-label">장소</span><span class="comp-row-value">${escapeHtml(c.venue)}</span></div>
+          <div class="comp-row"><span class="comp-row-label">시상</span><span class="comp-row-value">${escapeHtml(c.prize)}</span></div>
+          <button class="btn-primary" style="margin-top:var(--space-4);background:${c.url ? 'var(--comp-action)' : 'var(--c-text-muted)'}"
+                  ${c.url ? `onclick="window.open('${safeUrl}','_blank','noopener')"` : 'disabled'}>
+            원문 확인하기
+          </button>
+        </div>
       </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 }
 
-function scanCompetitionNotice() {
+async function scanCompetitionNotice() {
   if (!requireLeader()) return;
-  const exists = COMPETITIONS.some(c => c.title.includes('청소년 밴드 챔피언십'));
-  if (!exists) {
-    COMPETITIONS.unshift({
-	      id: Date.now(), status:'open',
-	      title:'전국 청소년 밴드 챔피언십',
-	      organizer:'한국실용음악협회',
-	      date:'2026. 12. 21',
-	      deadline:'2026. 11. 30',
-      venue:'상암 문화광장',
-      prize:'대상 500만원 / 음원 제작 지원',
-      desc:'새 공고 확인 기능으로 자동 등록된 샘플 대회입니다. 실제 앱에서는 지정한 공고 페이지나 API를 주기적으로 확인해 이 목록에 올립니다.',
-    });
-    notices.unshift({
-      id: Date.now() + 1, type:'competition',
-      title:'전국 청소년 밴드 챔피언십 새 공고',
-      content:'대회 정보 페이지에 새 공고가 자동 등록되었습니다. 접수 마감일과 참가 조건을 확인해 주세요.',
-      author:'Band Desk', date:'오늘', pinned:true,
-    });
-    saveAppState();
+  const button = document.getElementById('leader-competition-scan');
+  const originalText = button?.textContent || '새 대회 공고 확인';
+  if (button) {
+    button.disabled = true;
+    button.textContent = '검색 중...';
   }
-  renderCompetitions();
-  renderNotices();
-  showToast(exists ? '새 공고가 없습니다' : '새 대회 공고를 등록했습니다');
-  if ('Notification' in window && Notification.permission === 'granted') {
-    new Notification('새 대회 공고', { body:'전국 청소년 밴드 챔피언십이 등록되었습니다.' });
+  try {
+    const found = await searchCurrentCompetitions();
+    const existingKeys = new Set(COMPETITIONS.map(c => normalizeCompetitionKey(c.title, c.url)));
+    const newItems = found.filter(c => !existingKeys.has(normalizeCompetitionKey(c.title, c.url)));
+
+    if (newItems.length) {
+      COMPETITIONS.unshift(...newItems);
+      syncCompetitionData();
+      saveAppState();
+      renderCompetitions();
+      renderNotices();
+      showToast(`새 공고 ${newItems.length}개를 정리했습니다`);
+    } else {
+      renderCompetitions();
+      showToast(found.length ? '이미 등록된 공고입니다' : '검색된 새 공고가 없습니다');
+    }
+  } catch (error) {
+    console.error(error);
+    showToast('공고 검색에 실패했습니다');
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = originalText;
+    }
   }
+}
+
+async function searchCurrentCompetitions() {
+  const feeds = await Promise.allSettled(COMPETITION_SEARCH_QUERIES.map(fetchCompetitionFeed));
+  const items = feeds.flatMap(result => result.status === 'fulfilled' ? result.value : []);
+  const seen = new Set();
+  return items
+    .map(item => buildCompetitionFromSearchItem(item))
+    .filter(Boolean)
+    .filter(item => {
+      const key = normalizeCompetitionKey(item.title, item.url);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, 8);
+}
+
+async function fetchCompetitionFeed(query) {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 180);
+  const searchQuery = `${query} after:${dateKey(cutoff)}`;
+  const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(searchQuery)}&hl=ko&gl=KR&ceid=KR:ko`;
+  const text = await fetchTextWithProxy(rssUrl);
+  const doc = new DOMParser().parseFromString(text, 'application/xml');
+  return [...doc.querySelectorAll('item')].map(item => ({
+    title: cleanFeedTitle(item.querySelector('title')?.textContent || ''),
+    url: item.querySelector('link')?.textContent || '',
+    source: item.querySelector('source')?.textContent || '검색 결과',
+    publishedAt: item.querySelector('pubDate')?.textContent || '',
+    summary: stripHtml(item.querySelector('description')?.textContent || ''),
+  })).filter(isFreshSearchItem).filter(isRelevantCompetitionResult);
+}
+
+async function fetchTextWithProxy(url) {
+  const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 12000);
+  try {
+    const response = await fetch(proxyUrl, { cache: 'no-store', signal: controller.signal });
+    if (!response.ok) throw new Error(`검색 서버 응답 오류: ${response.status}`);
+    return await response.text();
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function buildCompetitionFromSearchItem(item) {
+  const combined = `${item.title} ${item.summary}`;
+  const deadline = inferDeadline(combined);
+  const parsedDeadline = parseDeadlineDate(deadline);
+  return {
+    id: hashString(`${item.title}|${item.url}`),
+    foundAt: new Date().toISOString(),
+    sourcePublishedAt: item.publishedAt,
+    status: !parsedDeadline || parsedDeadline >= dateKey(new Date()) ? 'open' : 'planned',
+    title: item.title || '대회 공고',
+    organizer: item.source || '검색 결과',
+    date: inferEventDate(combined) || '원문 확인 필요',
+    deadline: deadline || '원문 확인 필요',
+    venue: inferVenue(combined) || '원문 확인 필요',
+    prize: inferPrize(combined) || '원문 확인 필요',
+    url: item.url,
+    desc: summarizeCompetitionText(combined),
+  };
+}
+
+function isRelevantCompetitionResult(item) {
+  const text = `${item.title} ${item.summary}`;
+  return /밴드|실용음악|버스킹|음악|가요|락|록/i.test(text)
+    && /대회|경연|공모|모집|접수|콘테스트/i.test(text)
+    && !hasOnlyPastYear(text);
+}
+
+function isFreshSearchItem(item) {
+  if (!item.publishedAt) return true;
+  const publishedAt = new Date(item.publishedAt);
+  if (Number.isNaN(publishedAt.getTime())) return true;
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 180);
+  return publishedAt >= cutoff;
+}
+
+function hasOnlyPastYear(text) {
+  const years = [...String(text || '').matchAll(/\b(20\d{2})\b/g)].map(match => Number(match[1]));
+  if (!years.length) return false;
+  const currentYear = new Date().getFullYear();
+  return years.every(year => year < currentYear);
+}
+
+function cleanFeedTitle(value) {
+  return String(value || '').replace(/\s+-\s+[^-]+$/, '').trim();
+}
+
+function stripHtml(value) {
+  const doc = new DOMParser().parseFromString(String(value || ''), 'text/html');
+  return (doc.body.textContent || '').replace(/\s+/g, ' ').trim();
+}
+
+function inferDeadline(text) {
+  const matches = findKoreanDates(text);
+  const deadlineContext = /(마감|접수|신청|모집|까지|기한|deadline)/i;
+  const contextual = matches.find(match => deadlineContext.test(text.slice(Math.max(0, match.index - 20), match.index + 40)));
+  return formatFoundDate(contextual || matches[0]);
+}
+
+function inferEventDate(text) {
+  const matches = findKoreanDates(text);
+  const eventContext = /(개최|일시|일정|본선|예선|공연|행사|대회)/i;
+  const contextual = matches.find(match => eventContext.test(text.slice(Math.max(0, match.index - 20), match.index + 40)));
+  return formatFoundDate(contextual);
+}
+
+function findKoreanDates(text) {
+  const nowYear = new Date().getFullYear();
+  const pattern = /(?:(20\d{2})\s*[년.\-/]\s*)?(\d{1,2})\s*[월.\-/]\s*(\d{1,2})\s*일?/g;
+  return [...String(text || '').matchAll(pattern)].map(match => ({
+    index: match.index || 0,
+    year: match[1] || String(nowYear),
+    month: match[2],
+    day: match[3],
+  }));
+}
+
+function formatFoundDate(found) {
+  if (!found) return '';
+  return `${found.year}. ${String(found.month).padStart(2, '0')}. ${String(found.day).padStart(2, '0')}`;
+}
+
+function inferVenue(text) {
+  const match = String(text || '').match(/(?:장소|공연장|개최지|venue)\s*[:：]?\s*([^.,\n]{2,28})/i);
+  return match ? match[1].trim() : '';
+}
+
+function inferPrize(text) {
+  const match = String(text || '').match(/(?:총상금|상금|시상|대상)\s*[:：]?\s*([^.,\n]{2,32})/i);
+  return match ? match[0].trim() : '';
+}
+
+function summarizeCompetitionText(text) {
+  const cleaned = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!cleaned) return '검색 결과에서 가져온 공고입니다. 자세한 참가 조건은 원문에서 확인하세요.';
+  return cleaned.length > 130 ? `${cleaned.slice(0, 130)}...` : cleaned;
+}
+
+function normalizeCompetitionKey(title, url) {
+  return `${String(title || '').replace(/\s+/g, '').toLowerCase()}|${String(url || '').split('?')[0]}`;
+}
+
+function hashString(value) {
+  let hash = 0;
+  for (let i = 0; i < value.length; i += 1) {
+    hash = ((hash << 5) - hash) + value.charCodeAt(i);
+    hash |= 0;
+  }
+  return `search-${Math.abs(hash)}`;
 }
 
 // ═══════════════ MODAL ═══════════════
