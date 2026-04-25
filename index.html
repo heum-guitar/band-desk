@@ -50,6 +50,11 @@
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --nav-safe-bottom: max(6px, calc(env(safe-area-inset-bottom, 0px) - 22px));
+  --app-height: 100vh;
+}
+
+@supports (height: 100dvh) {
+  :root { --app-height: 100dvh; }
 }
 
 body.dark-mode {
@@ -92,8 +97,9 @@ body {
   display: flex;
   justify-content: center;
   width: 100%;
-  height: auto;
-  min-height: 0;
+  height: var(--app-height);
+  min-height: var(--app-height);
+  max-height: var(--app-height);
   overflow: hidden;
   overscroll-behavior: none;
   position: fixed;
@@ -108,8 +114,9 @@ body {
   position: relative;
   display: flex;
   flex-direction: column;
-  height: 100%;
-  min-height: 0;
+  height: var(--app-height);
+  min-height: var(--app-height);
+  max-height: var(--app-height);
   overflow: hidden;
   overscroll-behavior: none;
   box-shadow: 0 0 40px rgba(0,0,0,0.08);
@@ -897,7 +904,7 @@ let refreshingForUpdate = false;
 const LOGIN_KEY = 'bandDeskCurrentUserId';
 const APP_STATE_KEY = 'bandDeskAppStateV1';
 const THEME_KEY = 'bandDeskTheme';
-const APP_BUILD = '2026-04-26-09';
+const APP_BUILD = '2026-04-26-10';
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyDlG00JPma_ThM2omg5WAfYMUavd6F5xVk",
   authDomain: "heum-band.firebaseapp.com",
@@ -912,6 +919,18 @@ let cloudDb = null;
 let cloudSaveTimer = null;
 let applyingRemoteState = false;
 let cloudConnectedOnce = false;
+
+function syncAppViewportHeight() {
+  const viewport = window.visualViewport;
+  const height = Math.ceil(viewport?.height || window.innerHeight || document.documentElement.clientHeight);
+  if (height > 0) document.documentElement.style.setProperty('--app-height', `${height}px`);
+}
+
+syncAppViewportHeight();
+window.addEventListener('resize', syncAppViewportHeight, { passive: true });
+window.addEventListener('orientationchange', () => setTimeout(syncAppViewportHeight, 250), { passive: true });
+window.visualViewport?.addEventListener('resize', syncAppViewportHeight, { passive: true });
+window.visualViewport?.addEventListener('scroll', syncAppViewportHeight, { passive: true });
 
 function dateKey(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
