@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Band Desk">
+  <rect width="512" height="512" rx="112" fill="#20233F"/>
+  <circle cx="364" cy="150" r="54" fill="#F9737A"/>
+  <path fill="#5B5CE2" d="M134 142h216v62H134z"/>
+  <path fill="#FFFFFF" d="M169 248h174c50 0 90 40 90 90s-40 90-90 90H169c-50 0-90-40-90-90s40-90 90-90Zm0 62a28 28 0 1 0 0 56 28 28 0 0 0 0-56Zm176 0a28 28 0 1 0 0 56 28 28 0 0 0 0-56Z"/>
+  <path fill="#2EBFA5" d="M229 197h54v151h-54z"/>
+</svg>

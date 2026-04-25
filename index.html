@@ -1,0 +1,2243 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#20233F">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Band Desk">
+<title>Band Desk</title>
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./icons/icon.svg">
+<script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore-compat.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  --c-orange-base: #F9737A;
+  --c-orange-dark: #B84E57;
+  --c-orange-light: #FFB4A8;
+  --c-orange-pale: #FFF1F0;
+  --c-blue-base: #5B5CE2;
+  --c-blue-dark: #20233F;
+  --c-blue-light: #B8B7FF;
+  --c-blue-pale: #F0F1FF;
+  --c-green-base: #2EBFA5;
+  --c-green-pale: #EAF8F4;
+  --c-yellow-base: #D9A441;
+  --c-yellow-pale: #FFF7E6;
+  --c-red-base: #E6545F;
+  --c-red-pale: #FFF0F2;
+  --c-bg: #F6F7FB;
+  --c-surface: #FFFFFF;
+  --c-border: rgba(32,35,63,0.09);
+  --c-text-main: #20233F;
+  --c-text-muted: #6E7284;
+  --c-text-inverse: #FFFFFF;
+  --radius-lg: 20px;
+  --radius-md: 12px;
+  --radius-sm: 8px;
+  --radius-pill: 99px;
+  --space-1: 4px; --space-2: 8px; --space-3: 12px;
+  --space-4: 16px; --space-5: 20px; --space-6: 24px; --space-8: 32px;
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+body.dark-mode {
+  --c-orange-base: #FF8A8F;
+  --c-orange-dark: #7A3C42;
+  --c-orange-pale: #3A292B;
+  --c-blue-pale: #2A2D34;
+  --c-green-pale: #24342E;
+  --c-yellow-pale: #343024;
+  --c-red-pale: #372729;
+  --c-bg: #1C1C1E;
+  --c-surface: #2C2C2E;
+  --c-border: rgba(255,255,255,0.12);
+  --c-text-main: #F2F2F7;
+  --c-text-muted: #AEAEB2;
+  --c-blue-dark: #3A3A3C;
+  --c-blue-base: #A1A1FF;
+  --c-blue-light: #5A5A5F;
+  --c-green-base: #72D8C4;
+  --c-yellow-base: #E2BC73;
+  --c-red-base: #FF7A84;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+body {
+  font-family: var(--font-family);
+  background: var(--c-bg);
+  color: var(--c-text-main);
+  line-height: 1.5;
+  font-size: 15px;
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+.app-container {
+  width: 100%;
+  max-width: 428px;
+  background: var(--c-bg);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  box-shadow: 0 0 40px rgba(0,0,0,0.08);
+}
+
+/* ── Header ── */
+.app-header {
+  padding: var(--space-4) var(--space-4) var(--space-2);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--c-bg);
+  z-index: 10;
+  flex-shrink: 0;
+}
+.band-selector { display: flex; align-items: center; gap: var(--space-2); cursor: pointer; min-width: 0; }
+.brand-text-row { display: flex; align-items: baseline; gap: var(--space-2); min-width: 0; }
+.band-avatar {
+  width: 32px; height: 32px;
+  background: var(--c-blue-dark);
+  color: var(--c-surface);
+  border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 14px;
+}
+h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; }
+h2 { font-size: 17px; font-weight: 600; letter-spacing: -0.3px; margin-bottom: var(--space-3); }
+h3 { font-size: 15px; font-weight: 600; }
+.text-sm { font-size: 13px; color: var(--c-text-muted); }
+.text-xs { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+.text-mono { font-variant-numeric: tabular-nums; font-weight: 500; }
+
+.icon-btn {
+  width: 40px; height: 40px;
+  border-radius: var(--radius-pill);
+  display: flex; align-items: center; justify-content: center;
+  background: transparent; border: none;
+  color: var(--c-text-main); cursor: pointer; position: relative;
+}
+.notification-dot {
+  position: absolute; top: 8px; right: 10px;
+  width: 8px; height: 8px;
+  background: var(--c-orange-base);
+  border-radius: 50%; border: 2px solid var(--c-bg);
+}
+
+/* ── Main / Pages ── */
+.main-content { flex: 1; overflow: hidden; position: relative; }
+.page {
+  position: absolute; inset: 0;
+  overflow-y: auto;
+  padding: var(--space-4) var(--space-4) 96px;
+  display: none;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.page.active { display: flex; }
+.page::-webkit-scrollbar { display: none; }
+.page { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ── Cards ── */
+.card {
+  background: var(--c-surface);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  box-shadow: 0 4px 12px rgba(26,26,58,0.03);
+  border: 1px solid var(--c-border);
+}
+.hero-card {
+  background:
+    radial-gradient(circle at 88% 8%, rgba(255,255,255,0.16), transparent 30%),
+    linear-gradient(135deg, var(--c-blue-dark) 0%, var(--c-blue-base) 58%, #8B5CF6 100%);
+  color: var(--c-text-inverse);
+  border: 1px solid rgba(255,255,255,0.08); position: relative; overflow: clip;
+  padding-bottom: var(--space-5);
+  box-shadow: 0 12px 28px rgba(91,92,226,0.18);
+}
+.hero-card::after {
+  content: '';
+  position: absolute; top: -50%; right: -20%;
+  width: 200px; height: 200px;
+  background: rgba(255,255,255,0.05); border-radius: 50%;
+}
+.hero-tag {
+  display: inline-block;
+  background: rgba(255,255,255,0.2);
+  padding: 4px 10px; border-radius: var(--radius-pill);
+  margin-bottom: var(--space-3);
+  font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+.hero-title { font-size: 24px; font-weight: 700; margin-bottom: var(--space-1); }
+.hero-meta {
+  display: flex; align-items: center; gap: var(--space-4);
+  margin-top: var(--space-4); font-size: 14px; opacity: 0.9;
+}
+.hero-meta-item { display: flex; align-items: center; gap: var(--space-1); }
+
+/* ── Alert Banner ── */
+.alert-banner {
+  background: linear-gradient(135deg, var(--c-orange-base) 0%, #FF9F7A 100%);
+  color: white;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  display: flex; align-items: center; gap: var(--space-3);
+  cursor: pointer; transition: opacity 0.15s;
+  box-shadow: 0 10px 24px rgba(249,115,122,0.18);
+}
+.alert-banner:active { opacity: 0.85; }
+.alert-icon {
+  background: rgba(255,255,255,0.2);
+  padding: 6px; border-radius: 50%;
+  display: flex; flex-shrink: 0;
+}
+
+/* ── Grid ── */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+
+/* ── Action Cards ── */
+.action-card {
+  padding: var(--space-4); border-radius: var(--radius-md);
+  display: flex; flex-direction: column; gap: var(--space-2);
+  cursor: pointer; border: 1px solid transparent; transition: transform 0.15s;
+}
+.action-card:active { transform: scale(0.97); }
+.action-card.orange { background: var(--c-orange-pale); border-color: rgba(249,115,122,0.16); }
+.action-card.orange .action-icon { color: var(--c-orange-base); }
+.action-card.blue { background: var(--c-blue-pale); border-color: rgba(91,92,226,0.14); }
+.action-card.blue .action-icon { color: var(--c-blue-base); }
+.action-card.green { background: var(--c-green-pale); border-color: rgba(46,191,165,0.16); }
+.action-card.green .action-icon { color: var(--c-green-base); }
+.action-card.yellow { background: var(--c-yellow-pale); border-color: rgba(217,164,65,0.16); }
+.action-card.yellow .action-icon { color: var(--c-yellow-base); }
+.action-title { font-weight: 600; color: var(--c-text-main); font-size: 14px; }
+.action-desc { font-size: 12px; color: var(--c-text-muted); }
+
+/* ── Lists ── */
+.list-group { display: flex; flex-direction: column; gap: var(--space-3); }
+.list-item {
+  display: flex; align-items: center;
+  padding: var(--space-3); background: var(--c-bg);
+  border-radius: var(--radius-md); gap: var(--space-3);
+}
+.list-item.surface { background: var(--c-surface); border: 1px solid var(--c-border); }
+.list-item.cover-song {
+  background: #ECEEF3;
+  border: 1px solid rgba(32,35,63,0.08);
+}
+body.dark-mode .list-item.cover-song {
+  background: #343438;
+  border-color: rgba(255,255,255,0.10);
+}
+.item-content { flex: 1; min-width: 0; }
+.item-title { font-weight: 600; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item-sub { font-size: 13px; color: var(--c-text-muted); }
+
+/* ── File Badges ── */
+.file-actions { display: flex; gap: var(--space-2); }
+.file-badge {
+  width: 36px; height: 36px; border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; cursor: pointer;
+  transition: all 0.15s; flex-shrink: 0;
+}
+.file-badge.mp3 { background: var(--c-blue-pale); color: var(--c-blue-base); border: 1px solid rgba(91,92,226,0.14); }
+.file-badge.mp3.on { background: var(--c-blue-base); color: var(--c-surface); }
+.file-badge.mp3.off { opacity: 0.3; cursor: not-allowed; }
+.file-badge.sheet { background: var(--c-orange-pale); color: var(--c-orange-base); border: 1px solid rgba(249,115,122,0.16); }
+.file-badge.sheet.on { background: var(--c-orange-base); color: var(--c-surface); }
+.file-badge.sheet.off { opacity: 0.3; cursor: not-allowed; }
+
+/* ── Tasks ── */
+.task-checkbox {
+  width: 22px; height: 22px; border-radius: 6px;
+  border: 2px solid var(--c-border);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0; transition: all 0.15s;
+}
+.task-item.done .task-checkbox { background: var(--c-orange-base); border-color: var(--c-orange-base); }
+.task-item.done .item-title { text-decoration: line-through; color: var(--c-text-muted); }
+
+/* ── Tags ── */
+.tag {
+  display: inline-flex; align-items: center;
+  padding: 2px 8px; border-radius: var(--radius-pill);
+  font-size: 11px; font-weight: 600; white-space: nowrap;
+}
+.tag.muted { background: rgba(107,114,128,0.1); color: var(--c-text-muted); }
+.tag.orange { background: var(--c-orange-pale); color: var(--c-orange-base); }
+.tag.blue { background: var(--c-blue-pale); color: var(--c-blue-base); }
+.tag.green { background: var(--c-green-pale); color: var(--c-green-base); }
+.tag.red { background: var(--c-red-pale); color: var(--c-red-base); }
+
+/* ── Bottom Nav ── */
+.bottom-nav {
+  position: absolute; bottom: 0; left: 0; width: 100%;
+  background: var(--c-surface); border-top: 1px solid var(--c-border);
+  display: flex; justify-content: space-around;
+  padding: var(--space-2) 0 calc(var(--space-2) + env(safe-area-inset-bottom, 16px));
+  z-index: 20;
+}
+.nav-item {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  color: var(--c-text-muted); cursor: pointer;
+  padding: var(--space-2) var(--space-3);
+  background: none; border: none; min-width: 52px;
+}
+.nav-item.active { color: var(--c-blue-base); }
+.nav-icon { width: 24px; height: 24px; }
+.nav-label { font-size: 10px; font-weight: 600; }
+
+/* ── FAB ── */
+.fab {
+  position: absolute;
+  bottom: calc(72px + env(safe-area-inset-bottom, 16px));
+  right: var(--space-4);
+  width: 52px; height: 52px; border-radius: 50%;
+  background: var(--c-blue-dark); color: white;
+  border: none; display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 16px rgba(26,26,58,0.3); cursor: pointer;
+  z-index: 15; transition: transform 0.15s;
+}
+.fab:active { transform: scale(0.94); }
+
+/* ── Section Header ── */
+.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-3); }
+.section-header h2 { margin-bottom: 0; }
+.see-all { font-size: 13px; color: var(--c-blue-base); font-weight: 600; cursor: pointer; }
+
+/* ── Tab Bar ── */
+.tab-bar {
+  display: flex; gap: var(--space-1);
+  background: var(--c-surface); padding: var(--space-1);
+  border-radius: var(--radius-md); border: 1px solid var(--c-border);
+}
+.tab-btn {
+  flex: 1; padding: 8px var(--space-3); border: none;
+  background: transparent; border-radius: var(--radius-sm);
+  font-size: 13px; font-weight: 600; color: var(--c-text-muted);
+  cursor: pointer; transition: all 0.15s;
+}
+.tab-btn.active { background: var(--c-blue-dark); color: white; }
+
+/* ── Member Chips ── */
+.member-chips {
+  display: flex; gap: var(--space-2);
+  overflow-x: auto; padding-bottom: var(--space-1);
+}
+.member-chips::-webkit-scrollbar { display: none; }
+.member-chip {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: 6px 12px; border-radius: var(--radius-pill);
+  border: 2px solid var(--c-border); background: var(--c-surface);
+  cursor: pointer; white-space: nowrap;
+  font-size: 13px; font-weight: 600; color: var(--c-text-muted);
+  transition: all 0.15s; flex-shrink: 0;
+}
+.member-chip-av {
+  width: 22px; height: 22px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700; color: white;
+}
+
+/* ── Calendar ── */
+.cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4); }
+.cal-month { font-size: 18px; font-weight: 700; }
+.cal-nav-btn {
+  width: 36px; height: 36px; border-radius: var(--radius-pill);
+  border: 1px solid var(--c-border); background: var(--c-surface);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--c-text-main);
+}
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.cal-day-label {
+  text-align: center; font-size: 11px; font-weight: 600;
+  color: var(--c-text-muted); padding: var(--space-1) 0 var(--space-2);
+}
+.cal-cell {
+  aspect-ratio: 1; border-radius: var(--radius-sm);
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: flex-start; padding: 3px 2px;
+  cursor: pointer; transition: background 0.1s; min-height: 42px;
+}
+.cal-cell:hover { background: rgba(91,92,226,0.06); }
+.cal-cell.other { opacity: 0.25; }
+.cal-cell.band-event { background: rgba(249,115,122,0.1); }
+.cal-cell.selected { background: rgba(91,92,226,0.12); }
+.cal-day-num {
+  font-size: 13px; font-weight: 600;
+  width: 26px; height: 26px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; margin-bottom: 2px;
+}
+.cal-cell.today .cal-day-num { background: var(--c-blue-base); color: white; }
+.cal-dots { display: flex; gap: 2px; flex-wrap: wrap; justify-content: center; max-width: 30px; }
+.cal-dot { width: 5px; height: 5px; border-radius: 50%; }
+.cal-event-dot { width: 18px; height: 5px; border-radius: 99px; background: var(--c-orange-base); margin-top: 2px; }
+
+/* ── Notice ── */
+.notice-item {
+  background: var(--c-surface); border-radius: var(--radius-md);
+  padding: var(--space-4); border: 1px solid var(--c-border);
+  cursor: pointer; transition: box-shadow 0.15s;
+}
+.notice-item:active { box-shadow: 0 4px 12px rgba(26,26,58,0.08); }
+.notice-item.pinned { border-color: rgba(91,92,226,0.24); }
+.notice-hdr { display: flex; align-items: center; gap: var(--space-2); margin-bottom: 6px; }
+.notice-preview { font-size: 13px; color: var(--c-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 4px; }
+.notice-footer { display: flex; gap: var(--space-3); margin-top: var(--space-3); font-size: 12px; color: var(--c-text-muted); }
+
+/* ── Competition ── */
+.comp-card {
+  background: var(--c-surface); border-radius: var(--radius-lg);
+  overflow: hidden; border: 1px solid var(--c-border);
+  --comp-action: var(--c-orange-base);
+}
+.comp-header {
+  background: linear-gradient(135deg, var(--c-orange-dark) 0%, var(--c-orange-base) 62%, #FF9F7A 100%);
+  padding: var(--space-5) var(--space-4); color: white;
+}
+.comp-card.cool {
+  --comp-action: var(--c-blue-base);
+}
+.comp-card.cool .comp-header {
+  background: linear-gradient(135deg, var(--c-blue-dark) 0%, var(--c-blue-base) 62%, var(--c-blue-light) 100%);
+}
+.comp-card.warm {
+  --comp-action: var(--c-orange-base);
+}
+.comp-body { padding: var(--space-4); }
+.comp-row {
+  display: flex; justify-content: space-between;
+  padding: 10px 0; border-bottom: 1px solid var(--c-border);
+  font-size: 14px;
+}
+.comp-row:last-child { border-bottom: none; }
+.comp-row-label { color: var(--c-text-muted); }
+.comp-row-value { font-weight: 600; }
+
+/* ── Audio Player ── */
+.audio-player {
+  background: var(--c-blue-pale); border-radius: var(--radius-md);
+  padding: var(--space-3); margin-top: var(--space-3);
+  display: flex; align-items: center; gap: var(--space-3);
+}
+.audio-bar { flex: 1; height: 4px; background: var(--c-blue-light); border-radius: 2px; overflow: hidden; }
+.audio-fill { height: 100%; background: var(--c-blue-base); border-radius: 2px; transition: width 0.5s linear; }
+.audio-time { font-size: 12px; font-weight: 600; color: var(--c-blue-base); white-space: nowrap; }
+
+/* ── Stats ── */
+.stat-row { display: flex; gap: var(--space-3); }
+.stat-card {
+  flex: 1; background: var(--c-surface); border-radius: var(--radius-md);
+  padding: var(--space-4); border: 1px solid var(--c-border); text-align: center;
+}
+.stat-num { font-size: 24px; font-weight: 700; }
+.stat-label { font-size: 12px; color: var(--c-text-muted); margin-top: 2px; }
+
+/* ── Modal ── */
+.modal-overlay {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,0.45); z-index: 50;
+  display: none; align-items: flex-end;
+}
+.modal-overlay.open { display: flex; }
+.modal-sheet {
+  width: 100%; background: var(--c-surface);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  padding: var(--space-6) var(--space-4) calc(var(--space-6) + env(safe-area-inset-bottom, 16px));
+  animation: slideUp 0.28s ease; max-height: 92vh; overflow-y: auto;
+}
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.modal-handle { width: 36px; height: 4px; background: var(--c-border); border-radius: 2px; margin: 0 auto var(--space-5); }
+.modal-title { font-size: 18px; font-weight: 700; margin-bottom: var(--space-5); }
+
+/* ── Forms ── */
+.form-group { margin-bottom: var(--space-4); }
+.form-label { font-size: 13px; font-weight: 600; color: var(--c-text-muted); margin-bottom: var(--space-2); display: block; }
+.form-input, .form-select, .form-textarea {
+  width: 100%; padding: var(--space-3) var(--space-4);
+  border: 1.5px solid var(--c-border); border-radius: var(--radius-md);
+  font-family: var(--font-family); font-size: 15px;
+  color: var(--c-text-main); background: var(--c-bg); outline: none;
+  transition: border-color 0.15s;
+}
+.form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--c-blue-base); }
+.form-textarea { resize: none; height: 80px; }
+.btn-primary {
+  width: 100%; padding: var(--space-4);
+  background: var(--c-blue-dark); color: white; border: none;
+  border-radius: var(--radius-md); font-family: var(--font-family);
+  font-size: 15px; font-weight: 600; cursor: pointer; transition: opacity 0.15s;
+}
+.btn-primary:active { opacity: 0.85; }
+.btn-primary:disabled { background: var(--c-text-muted); cursor: not-allowed; }
+
+/* ── Toast ── */
+.toast {
+  position: absolute; top: 72px; left: 50%; transform: translateX(-50%);
+  background: var(--c-blue-dark); color: white;
+  padding: 10px 20px; border-radius: var(--radius-pill);
+  font-size: 13px; font-weight: 600; z-index: 100;
+  opacity: 0; transition: opacity 0.25s; white-space: nowrap; pointer-events: none;
+}
+.toast.show { opacity: 1; }
+
+/* ── Song Num ── */
+.song-num { font-size: 13px; font-weight: 700; color: var(--c-text-muted); width: 20px; text-align: center; flex-shrink: 0; }
+
+/* ── Member Avatar ── */
+.member-av {
+  width: 40px; height: 40px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 15px; color: white; flex-shrink: 0;
+}
+.member-row {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3); background: var(--c-surface);
+  border-radius: var(--radius-md); border: 1px solid var(--c-border);
+}
+
+svg { fill: currentColor; }
+
+/* ── Login ── */
+#login-screen {
+  position: absolute; inset: 0; z-index: 200;
+  background: linear-gradient(160deg, var(--c-blue-dark) 0%, var(--c-blue-base) 70%, #8B5CF6 100%);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: var(--space-8);
+  transition: opacity 0.4s;
+}
+.login-logo {
+  width: 72px; height: 72px;
+  background: rgba(255,255,255,0.12);
+  border-radius: 20px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 30px; font-weight: 800; color: white;
+  margin: 0 auto var(--space-4);
+  border: 1.5px solid rgba(255,255,255,0.15);
+}
+.login-name-btn {
+  padding: 12px 16px;
+  background: rgba(255,255,255,0.1);
+  border: 1.5px solid rgba(255,255,255,0.18);
+  border-radius: var(--radius-md);
+  color: white; font-family: var(--font-family);
+  font-size: 15px; font-weight: 600;
+  cursor: pointer; transition: background 0.15s; text-align: center;
+}
+.login-name-btn:hover, .login-name-btn:active { background: rgba(255,255,255,0.2); }
+.login-input-wrap input {
+  width: 100%;
+  padding: var(--space-4);
+  background: rgba(255,255,255,0.1);
+  border: 1.5px solid rgba(255,255,255,0.2);
+  border-radius: var(--radius-md);
+  color: white; font-family: var(--font-family); font-size: 16px;
+  outline: none; caret-color: white;
+}
+.login-input-wrap input::placeholder { color: rgba(255,255,255,0.4); }
+.login-input-wrap input:focus { border-color: rgba(255,255,255,0.5); }
+.login-btn {
+  width: 100%; padding: var(--space-4);
+  background: white; color: var(--c-blue-dark);
+  border: none; border-radius: var(--radius-md);
+  font-family: var(--font-family); font-size: 15px; font-weight: 700;
+  cursor: pointer; transition: opacity 0.15s;
+}
+.login-btn:active { opacity: 0.85; }
+</style>
+</head>
+<body>
+<div class="app-container">
+
+  <!-- Login Screen -->
+  <div id="login-screen">
+    <div style="text-align:center;margin-bottom:40px">
+      <div class="login-logo">B</div>
+      <div style="font-size:26px;font-weight:800;color:white;letter-spacing:-0.5px">Band Desk</div>
+      <div style="font-size:14px;color:rgba(255,255,255,0.5);margin-top:6px">밴드 리더 운영 앱</div>
+    </div>
+    <div style="width:100%;max-width:320px;display:flex;flex-direction:column;gap:var(--space-4)">
+      <div>
+        <div style="font-size:12px;font-weight:600;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:.5px;margin-bottom:var(--space-3)">멤버 선택</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2)" id="login-quick"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <!-- Header -->
+  <header class="app-header">
+    <div class="band-selector" onclick="navigateTo('home')" title="홈">
+      <div class="band-avatar">B</div>
+      <div class="brand-text-row">
+        <h1 id="page-title">Band Desk</h1>
+        <div id="current-user-label" style="font-size:12px;font-weight:600;color:var(--c-text-muted);white-space:nowrap"></div>
+      </div>
+    </div>
+    <button class="icon-btn" onclick="openSettings()" title="환경설정">
+      <svg width="23" height="23" viewBox="0 0 24 24"><path d="M19.43 12.98c.04-.32.07-.65.07-.98s-.02-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.37-.31-.6-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98L14.5 2.42C14.47 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.5.42L9.12 5.07c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.08-.48 0-.6.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.08.65-.08.98s.03.66.08.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.37.31.6.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.04.24.25.42.5.42h4c.25 0 .47-.18.5-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.08.48 0 .6-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5A3.5 3.5 0 1 1 12 8a3.5 3.5 0 0 1 0 7.5z"/></svg>
+    </button>
+  </header>
+
+  <!-- Main -->
+  <main class="main-content">
+
+    <!-- ══════════ HOME ══════════ -->
+    <div class="page active" id="page-home">
+
+      <div class="alert-banner" onclick="navigateTo('competition')">
+        <div class="alert-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24"><path d="M11 15h2v2h-2zm0-8h2v6h-2zm.99-5C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"/></svg>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:11px;font-weight:600;letter-spacing:.5px;color:rgba(255,255,255,.8)">대회 알람 · 새 공고</div>
+          <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">청소년 밴드 경연대회 접수 시작</div>
+        </div>
+        <svg width="16" height="16" viewBox="0 0 24 24" style="flex-shrink:0"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+      </div>
+
+      <!-- Hero: next rehearsal -->
+      <div class="card hero-card" id="next-event-card" onclick="openNextBandEventEditor()" style="cursor:pointer">
+        <div class="hero-tag" id="next-event-kind">다음 정기 합주</div>
+        <div class="hero-title" id="next-event-title">이번 토요일 18:00</div>
+        <div id="next-event-place" style="font-size:13px;color:rgba(255,255,255,.75)">홍대 A스튜디오 3번방</div>
+        <div class="hero-meta">
+          <div class="hero-meta-item text-mono">
+            <svg width="16" height="16" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+            참여 4/4
+          </div>
+          <div class="hero-meta-item">
+            <svg width="16" height="16" viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
+            <span id="next-event-dday">D-3</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- This week setlist -->
+      <div class="card">
+        <div class="section-header">
+          <h2>이번 주 합주 곡</h2>
+          <span class="see-all" id="home-setlist-link" onclick="navigateTo('songs')">설정 →</span>
+        </div>
+        <div class="list-group" id="home-setlist"></div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stat-row">
+        <div class="stat-card">
+          <div class="stat-num" style="color:var(--c-blue-base)" id="stat-songs">8</div>
+          <div class="stat-label">보유 곡</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" style="color:var(--c-orange-base)" id="stat-setlist">3</div>
+          <div class="stat-label">합주 곡</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" style="color:var(--c-green-base)" id="stat-done">5</div>
+          <div class="stat-label">완료 할일</div>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div>
+        <div class="action-card orange" onclick="navigateTo('competition')">
+          <div class="action-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+          </div>
+          <div>
+            <div class="action-title">대회 정보</div>
+            <div class="action-desc">2개 대회 접수 중</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- My tasks preview -->
+      <div>
+        <div class="section-header">
+          <h2>내 할 일</h2>
+          <span class="see-all" onclick="navigateTo('tasks')">전체 보기</span>
+        </div>
+        <div class="list-group" id="home-tasks"></div>
+      </div>
+    </div>
+
+    <!-- ══════════ NOTICE ══════════ -->
+    <div class="page" id="page-notice">
+      <div class="list-group" id="notice-list"></div>
+    </div>
+
+    <!-- ══════════ SONGS ══════════ -->
+    <div class="page" id="page-songs">
+      <div class="tab-bar">
+        <button class="tab-btn active" id="tab-library" onclick="switchSongsTab('library')">전체 라이브러리</button>
+        <button class="tab-btn" id="tab-setlist" onclick="switchSongsTab('setlist')">이번 주 합주</button>
+      </div>
+      <div id="songs-library"><div class="list-group" id="library-list"></div></div>
+      <div id="songs-setlist" style="display:none">
+        <div class="card" style="background:var(--c-blue-pale);border-color:rgba(91,92,226,.14);margin-bottom:var(--space-4)">
+          <div style="font-weight:600;color:var(--c-blue-base);margin-bottom:4px">합주 일자</div>
+          <div style="font-size:22px;font-weight:700">이번 토요일 18:00</div>
+          <div style="font-size:13px;color:var(--c-text-muted);margin-top:2px">홍대 A스튜디오 3번방</div>
+        </div>
+        <div class="section-header">
+          <h2>합주 곡 목록</h2>
+          <span class="see-all" id="setlist-edit-hint" onclick="switchSongsTab('library');showToast('라이브러리에서 곡을 추가/제거하세요')">편집</span>
+        </div>
+        <div class="list-group" id="setlist-list"></div>
+      </div>
+    </div>
+
+    <!-- ══════════ TASKS ══════════ -->
+    <div class="page" id="page-tasks">
+      <div class="member-chips" id="member-chips"></div>
+      <div class="list-group" id="task-list"></div>
+    </div>
+
+    <!-- ══════════ CALENDAR ══════════ -->
+    <div class="page" id="page-calendar">
+      <div class="card">
+        <div class="cal-header">
+          <button class="cal-nav-btn" onclick="changeMonth(-1)">
+            <svg width="20" height="20" viewBox="0 0 24 24"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z"/></svg>
+          </button>
+          <span class="cal-month" id="cal-label"></span>
+          <button class="cal-nav-btn" onclick="changeMonth(1)">
+            <svg width="20" height="20" viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
+          </button>
+        </div>
+        <div class="cal-grid" id="cal-grid"></div>
+      </div>
+      <div>
+        <div style="font-size:12px;font-weight:600;color:var(--c-text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:var(--space-3)">멤버 필터</div>
+        <div class="member-chips" id="cal-filter"></div>
+      </div>
+      <div class="card" id="cal-detail" style="display:none">
+        <h3 id="cal-detail-title" style="margin-bottom:var(--space-3)"></h3>
+        <div class="list-group" id="cal-detail-events" style="margin-bottom:var(--space-4)"></div>
+        <div class="list-group" id="cal-detail-members"></div>
+        <button class="btn-primary" id="band-event-edit-btn" style="margin-top:var(--space-4);background:var(--c-orange-base)" onclick="showBandEventModal()">합주/공연 일정 등록</button>
+        <button class="btn-primary" id="schedule-edit-btn" style="margin-top:var(--space-4)" onclick="showAddScheduleModal()">이 날 일정 수정</button>
+      </div>
+    </div>
+
+    <!-- ══════════ COMPETITION ══════════ -->
+    <div class="page" id="page-competition">
+      <button onclick="navigateTo('home')" style="background:none;border:none;cursor:pointer;display:flex;align-items:center;gap:4px;color:var(--c-blue-base);font-weight:600;font-size:14px;padding:0;flex-shrink:0">
+        <svg width="20" height="20" viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+        홈으로
+      </button>
+      <button class="btn-primary" id="leader-competition-scan" style="background:var(--c-orange-base)" onclick="scanCompetitionNotice()">새 대회 공고 확인</button>
+      <div class="list-group" id="competition-list"></div>
+    </div>
+
+  </main>
+
+  <!-- FAB -->
+  <button class="fab" id="fab" onclick="handleFab()" style="display:none">
+    <svg width="24" height="24" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+  </button>
+
+  <!-- Bottom Nav -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" id="nav-home" onclick="navigateTo('home')">
+      <svg class="nav-icon" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+      <span class="nav-label">홈</span>
+    </button>
+    <button class="nav-item" id="nav-notice" onclick="navigateTo('notice')">
+      <svg class="nav-icon" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg>
+      <span class="nav-label">공지</span>
+    </button>
+    <button class="nav-item" id="nav-songs" onclick="navigateTo('songs')">
+      <svg class="nav-icon" viewBox="0 0 24 24"><path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 5h-3v5.5c0 1.38-1.12 2.5-2.5 2.5S10 13.88 10 12.5s1.12-2.5 2.5-2.5c.57 0 1.08.19 1.5.51V5h4v2zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6z"/></svg>
+      <span class="nav-label">곡 관리</span>
+    </button>
+    <button class="nav-item" id="nav-tasks" onclick="navigateTo('tasks')">
+      <svg class="nav-icon" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+      <span class="nav-label">할 일</span>
+    </button>
+    <button class="nav-item" id="nav-calendar" onclick="navigateTo('calendar')">
+      <svg class="nav-icon" viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>
+      <span class="nav-label">달력</span>
+    </button>
+  </nav>
+
+  <!-- Modal -->
+  <div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+    <div class="modal-sheet" onclick="event.stopPropagation()">
+      <div class="modal-handle"></div>
+      <div id="modal-content"></div>
+    </div>
+  </div>
+
+</div>
+<script>
+// ═══════════════ DATA ═══════════════
+
+const MEMBERS = [
+  { id:'jinheum', name:'조진흠', short:'조', role:'리더', instrument:'리더', color:'#5B5CE2' },
+  { id:'seongyong', name:'신성용', short:'신', role:'멤버', instrument:'드럼', color:'#F9737A' },
+  { id:'rakhyun', name:'정락현', short:'정', role:'멤버', instrument:'베이스', color:'#10B981' },
+  { id:'sanghyun', name:'주상현', short:'주', role:'멤버', instrument:'기타', color:'#F59E0B' },
+];
+const LEADER_ID = 'jinheum';
+
+const SONGS = [
+  { id:1, title:'널', artist:'Binge watch', mp3:false, sheet:false },
+  { id:2, title:'나 좀 서운해', artist:'Binge watch', mp3:false, sheet:false },
+  { id:3, title:'비가 온 날', artist:'Binge watch', mp3:false, sheet:false },
+  { id:4, title:'도쿄플래시', artist:'', mp3:false, sheet:false },
+  { id:5, title:'I wanna live with you', artist:'Binge watch', mp3:false, sheet:false },
+  { id:6, title:'Sayonara baby', artist:'Fujii Kaze', mp3:false, sheet:false },
+  { id:7, title:'What time is it !', artist:'Binge watch', mp3:false, sheet:false },
+  { id:8, title:'거울', artist:'Binge watch', mp3:false, sheet:false },
+];
+
+let setlist = SONGS.map(s => s.id);
+
+let notices = [
+  { id:2026042503, type:'competition', title:'제4회 울산 중구 전국거리음악대회 공고', content:'접수 마감은 2026년 4월 26일입니다. 전국 음악 버스커 개인 또는 팀 참가가 가능하며 총상금 1,800만원 규모입니다.', author:'Band Desk', date:'04.25', pinned:true },
+  { id:2026042502, type:'competition', title:'2026 제5회 광주버스킹월드컵 공고', content:'접수 마감은 2026년 5월 31일입니다. 국내외 뮤지션 공연팀 모집 공고이며 총상금 2,000만원 규모입니다.', author:'Band Desk', date:'04.25', pinned:true },
+  { id:2026042501, type:'competition', title:'2026 퇴근 후 락 樂 공고', content:'접수 마감은 2026년 5월 10일 자정입니다. 직장인·사회인·동호회 밴드 참가가 가능합니다.', author:'Band Desk', date:'04.25', pinned:true },
+  { id:1, type:'schedule',    title:'10월 정기 합주 안내',            content:'10월 28일 토요일 오후 2시, 홍대 A스튜디오 3번방에서 정기 합주를 진행합니다. 늦지 않게 참석 부탁드립니다.',  author:'조진흠', date:'10.20', pinned:true  },
+  { id:3, type:'general',     title:'Hysteria 악보 구합니다',          content:'악보 파일 구하고 계신 분 있으면 공유 부탁드립니다.',                                                        author:'신성용', date:'10.19', pinned:false },
+];
+
+const COMPETITIONS = [
+  {
+    id:2026042503, status:'open',
+    title:'제4회 울산 중구 전국거리음악대회',
+    organizer:'울산광역시 중구',
+    date:'2026. 06. 20 ~ 06. 21',
+    deadline:'2026. 04. 26',
+    venue:'울산 중구 성남동 일원',
+    prize:'총상금 1,800만원',
+    url:'https://www.mule.co.kr/bbs/info/contest?andor=and&category=&ct1=&ct2=&ct3=&dong=&end_price=&gugun=&idx=68067343&map=list&mode=list&od=desc&of=wdate&options=&page=126&period=6&qf=title_legacy&qs=&region=&sell_status=&sido=&soldout=&start_price=&store=&v=v',
+    desc:'전국 음악 버스커 누구나 개인 또는 팀으로 참가할 수 있는 거리음악 경연입니다. 신청은 온라인 구글폼으로 진행됩니다.',
+  },
+  {
+    id:2026042502, status:'open',
+    title:'2026 제5회 광주버스킹월드컵',
+    organizer:'광주광역시 동구청 / 광주동구문화관광재단',
+    date:'2026. 10. 07 ~ 10. 11',
+    deadline:'2026. 05. 31',
+    venue:'국립아시아문화전당 하늘마당, 5·18민주광장 등 충장로 일원',
+    prize:'총상금 2,000만원 / 1위 1,000만원',
+    url:'https://www.buskingworldcup.com/',
+    desc:'국내외 뮤지션과 공연팀을 모집하는 글로벌 버스킹 음악 경연대회입니다. 특전으로 음원 발매·유통 지원과 차년도 축하공연 초청 등이 안내되어 있습니다.',
+  },
+  {
+    id:2026042501, status:'open',
+    title:'2026 퇴근 후 락 樂',
+    organizer:'인천사랑운동센터 / 인천사랑운동시민협의회',
+    date:'2026. 06. 07 15:00',
+    deadline:'2026. 05. 10',
+    venue:'인천문화예술회관 소극장',
+    prize:'총상금 450만원',
+    url:'https://forms.gle/mCe5isYv22VL81E27',
+    desc:'밴드음악을 사랑하는 직장인·사회인·동호회 밴드 대상 경연입니다. 팀원 전원 성인이어야 하며 라이브 합주 또는 공연 영상 URL 제출이 필요합니다.',
+  },
+];
+
+let tasks = [
+  { id:1, mid:'jinheum', title:'경연대회 참가 신청서 작성', dl:'10.20', done:true },
+  { id:2, mid:'jinheum', title:'합주 공지 최종 확인', dl:'10.25', done:false },
+  { id:3, mid:'seongyong', title:'Hysteria 파트 카피 완료하기', dl:'10.25', done:false },
+  { id:4, mid:'seongyong', title:'비밀번호 486 악보 정리', dl:'10.22', done:true },
+  { id:5, mid:'rakhyun', title:'Dani California 파트 연습', dl:'10.25', done:false },
+  { id:6, mid:'rakhyun', title:'비밀번호 486 가사 완벽히 외우기', dl:'10.26', done:true },
+  { id:7, mid:'sanghyun', title:'Dani California 리프 완성', dl:'10.24', done:true },
+  { id:8, mid:'sanghyun', title:'Mr. Brightside 코드 진행 연습', dl:'10.27', done:false },
+];
+
+let schedules = {
+  '2024-10-14': ['jinheum','seongyong','rakhyun'],
+  '2024-10-15': ['seongyong','sanghyun'],
+  '2024-10-19': ['jinheum','rakhyun','sanghyun'],
+  '2024-10-20': ['jinheum'],
+  '2024-10-21': ['jinheum','seongyong','rakhyun','sanghyun'],
+  '2024-10-26': ['jinheum','seongyong'],
+  '2024-10-27': ['jinheum','rakhyun','sanghyun'],
+  '2024-10-28': ['jinheum','seongyong','rakhyun','sanghyun'],
+};
+
+let bandEvents = [
+  {
+    id: 1,
+    type: 'rehearsal',
+    title: '정기 합주',
+    date: nextDateKey(3),
+    time: '18:00',
+    place: '홍대 A스튜디오 3번방',
+    memo: '이번 주 합주곡 중심으로 맞춥니다.',
+  },
+];
+
+// ═══════════════ STATE ═══════════════
+let currentUserId = null;
+let currentPage = 'home';
+let activeMember = 'jinheum';
+let calDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+let calFilter = MEMBERS.map(m => m.id);
+let selectedDate = dateKey(new Date());
+let playingId = null;
+let audioTimer = null;
+let audioSec = 0;
+let songsTabActive = 'library';
+let hiddenCompetitionNoticeIds = [];
+const LOGIN_KEY = 'bandDeskCurrentUserId';
+const APP_STATE_KEY = 'bandDeskAppStateV1';
+const THEME_KEY = 'bandDeskTheme';
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDlG00JPma_ThM2omg5WAfYMUavd6F5xVk",
+  authDomain: "heum-band.firebaseapp.com",
+  projectId: "heum-band",
+  storageBucket: "heum-band.firebasestorage.app",
+  messagingSenderId: "122572059146",
+  appId: "1:122572059146:web:8b134b9a4a4a952eb425f3"
+};
+const CLOUD_STATE_COLLECTION = 'bandDesk';
+const CLOUD_STATE_DOC = 'sharedState';
+let cloudDb = null;
+let cloudSaveTimer = null;
+let applyingRemoteState = false;
+let cloudConnectedOnce = false;
+
+function dateKey(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+}
+
+function nextDateKey(offset) {
+  const date = new Date();
+  date.setDate(date.getDate() + offset);
+  return dateKey(date);
+}
+
+function formatEventDate(value) {
+  const date = new Date(`${value}T00:00:00`);
+  return new Intl.DateTimeFormat('ko-KR', { month:'long', day:'numeric', weekday:'short' }).format(date);
+}
+
+function parseDeadlineDate(value) {
+  const match = String(value || '').match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
+  if (!match) return null;
+  return `${match[1]}-${match[2].padStart(2,'0')}-${match[3].padStart(2,'0')}`;
+}
+
+function isCompetitionOpen(competition) {
+  const deadline = parseDeadlineDate(competition.deadline);
+  return !deadline || deadline >= dateKey(new Date());
+}
+
+function competitionNotice(competition) {
+  return {
+    id: competition.id,
+    type: 'competition',
+    title: `${competition.title} 공고`,
+    content: `접수 마감은 ${competition.deadline}입니다. ${competition.desc}`,
+    author: 'Band Desk',
+    date: dateKey(new Date()).slice(5).replace('-', '.'),
+    pinned: true,
+  };
+}
+
+function isCoverSong(song) {
+  return String(song.artist || '').trim().toLowerCase() !== 'binge watch';
+}
+
+function syncCompetitionData() {
+  const openCompetitions = COMPETITIONS.filter(isCompetitionOpen);
+  COMPETITIONS.splice(0, COMPETITIONS.length, ...openCompetitions);
+  const openIds = new Set(COMPETITIONS.map(c => String(c.id)));
+  const hiddenIds = new Set(hiddenCompetitionNoticeIds.map(String));
+  const existingCompetitionNotices = notices.filter(n =>
+    n.type === 'competition' && openIds.has(String(n.id)) && !hiddenIds.has(String(n.id))
+  );
+  const existingIds = new Set(existingCompetitionNotices.map(n => String(n.id)));
+  const competitionNotices = [
+    ...existingCompetitionNotices,
+    ...COMPETITIONS.filter(c => !existingIds.has(String(c.id)) && !hiddenIds.has(String(c.id))).map(competitionNotice),
+  ];
+  notices = [
+    ...competitionNotices,
+    ...notices.filter(n => n.type !== 'competition'),
+  ];
+}
+
+function getDDayLabel(dateValue) {
+  if (!dateValue) return '일정 없음';
+  const today = new Date(`${dateKey(new Date())}T00:00:00`);
+  const eventDate = new Date(`${dateValue}T00:00:00`);
+  const diffDays = Math.round((eventDate - today) / 86400000);
+  if (diffDays === 0) return 'D-Day';
+  if (diffDays > 0) return `D-${diffDays}`;
+  return `D+${Math.abs(diffDays)}`;
+}
+
+function setText(id, value) {
+  const element = document.getElementById(id);
+  if (element) element.textContent = value;
+}
+
+function applyTheme(theme) {
+  document.body.classList.toggle('dark-mode', theme === 'dark');
+  localStorage.setItem(THEME_KEY, theme);
+}
+
+function initTheme() {
+  applyTheme(localStorage.getItem(THEME_KEY) || 'light');
+}
+
+function getAppState() {
+  return {
+    songs: SONGS,
+    setlist,
+    notices,
+    competitions: COMPETITIONS,
+    hiddenCompetitionNoticeIds,
+    tasks,
+    schedules,
+    bandEvents,
+  };
+}
+
+function saveAppState() {
+  const state = getAppState();
+  localStorage.setItem(APP_STATE_KEY, JSON.stringify(state));
+  queueCloudSave(state);
+}
+
+function mergeCompetitionLists(savedCompetitions) {
+  const seen = new Set(savedCompetitions.map(item => item.id || item.title));
+  const newDefaults = COMPETITIONS.filter(item => !seen.has(item.id) && !seen.has(item.title));
+  return [...savedCompetitions, ...newDefaults];
+}
+
+function mergeNoticeLists(savedNotices) {
+  const seen = new Set(savedNotices.map(item => item.id || item.title));
+  const newDefaults = notices.filter(item => !seen.has(item.id) && !seen.has(item.title));
+  return [...savedNotices, ...newDefaults];
+}
+
+function applyAppState(state) {
+  if (Array.isArray(state.songs)) SONGS.splice(0, SONGS.length, ...state.songs);
+  if (Array.isArray(state.setlist)) setlist = state.setlist;
+  if (Array.isArray(state.notices)) notices = mergeNoticeLists(state.notices);
+  if (Array.isArray(state.competitions)) COMPETITIONS.splice(0, COMPETITIONS.length, ...mergeCompetitionLists(state.competitions));
+  if (Array.isArray(state.hiddenCompetitionNoticeIds)) hiddenCompetitionNoticeIds = state.hiddenCompetitionNoticeIds;
+  if (Array.isArray(state.tasks)) tasks = state.tasks;
+  if (state.schedules && typeof state.schedules === 'object') schedules = state.schedules;
+  if (Array.isArray(state.bandEvents)) bandEvents = state.bandEvents;
+}
+
+function loadAppState() {
+  const saved = localStorage.getItem(APP_STATE_KEY);
+  if (!saved) {
+    syncCompetitionData();
+    localStorage.setItem(APP_STATE_KEY, JSON.stringify(getAppState()));
+    return;
+  }
+  try {
+    applyAppState(JSON.parse(saved));
+    syncCompetitionData();
+    localStorage.setItem(APP_STATE_KEY, JSON.stringify(getAppState()));
+  } catch {
+    showToast('저장된 데이터를 불러오지 못했습니다');
+    syncCompetitionData();
+    localStorage.setItem(APP_STATE_KEY, JSON.stringify(getAppState()));
+  }
+}
+
+function refreshVisibleData() {
+  renderHome();
+  if (currentPage === 'songs')       renderSongs();
+  if (currentPage === 'tasks')       renderTasks();
+  if (currentPage === 'calendar')    renderCalendar();
+  if (currentPage === 'notice')      renderNotices();
+  if (currentPage === 'competition') renderCompetitions();
+  updateLeaderControls();
+}
+
+function queueCloudSave(state) {
+  if (!cloudDb || applyingRemoteState) return;
+  clearTimeout(cloudSaveTimer);
+  cloudSaveTimer = setTimeout(() => {
+    cloudDb.collection(CLOUD_STATE_COLLECTION).doc(CLOUD_STATE_DOC).set({
+      state,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true }).catch(() => {
+      showToast('공유 저장에 실패했습니다. 로컬에는 저장됐습니다');
+    });
+  }, 350);
+}
+
+function initCloudSync() {
+  if (!window.firebase) return;
+  try {
+    firebase.initializeApp(FIREBASE_CONFIG);
+    cloudDb = firebase.firestore();
+    cloudDb.enablePersistence({ synchronizeTabs: true }).catch(() => {});
+    cloudDb.collection(CLOUD_STATE_COLLECTION).doc(CLOUD_STATE_DOC).onSnapshot(snapshot => {
+      if (!snapshot.exists) {
+        queueCloudSave(getAppState());
+        return;
+      }
+      const remoteState = snapshot.data()?.state;
+      if (!remoteState) return;
+      applyingRemoteState = true;
+      applyAppState(remoteState);
+      syncCompetitionData();
+      localStorage.setItem(APP_STATE_KEY, JSON.stringify(getAppState()));
+      applyingRemoteState = false;
+      refreshVisibleData();
+      if (!cloudConnectedOnce) {
+        cloudConnectedOnce = true;
+        showToast('공유 데이터에 연결됐습니다');
+      }
+    }, () => {
+      showToast('공유 데이터 연결에 실패했습니다');
+    });
+  } catch {
+    showToast('Firebase 연결을 시작하지 못했습니다');
+  }
+}
+
+// ═══════════════ ICONS ═══════════════
+const I = {
+  play:  `<svg width="18" height="18" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`,
+  pause: `<svg width="18" height="18" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`,
+  sheet: `<svg width="18" height="18" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>`,
+  check: `<svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>`,
+  pin:   `<svg width="13" height="13" viewBox="0 0 24 24"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2z"/></svg>`,
+  del:   `<svg width="16" height="16" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>`,
+};
+
+// ═══════════════ LOGIN ═══════════════
+function initLogin() {
+  const grid = document.getElementById('login-quick');
+  grid.innerHTML = MEMBERS.map(m => `
+    <button class="login-name-btn" onclick="quickLogin('${m.name}')"
+            style="display:flex;align-items:center;gap:10px">
+      <div style="width:32px;height:32px;border-radius:50%;background:${m.color};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:white;flex-shrink:0">${m.short}</div>
+      <span>${m.name}</span>
+    </button>
+  `).join('');
+  const savedUserId = localStorage.getItem(LOGIN_KEY);
+  const savedMember = MEMBERS.find(m => m.id === savedUserId);
+  if (savedMember) loginAs(savedMember);
+}
+
+function quickLogin(name) {
+  const member = MEMBERS.find(m => m.name === name);
+  if (!member) return;
+  loginAs(member);
+}
+
+function loginAs(member) {
+  currentUserId = member.id;
+  activeMember  = member.id;
+  localStorage.setItem(LOGIN_KEY, member.id);
+  updateCurrentUserLabel(member);
+  const screen = document.getElementById('login-screen');
+  screen.style.opacity = '0';
+  setTimeout(() => { screen.style.display = 'none'; }, 380);
+  renderHome();
+  renderCompetitions();
+  updateLeaderControls();
+}
+
+function logout() {
+  localStorage.removeItem(LOGIN_KEY);
+  currentUserId = null;
+  activeMember = LEADER_ID;
+  currentPage = 'home';
+  navigateTo('home');
+  updateCurrentUserLabel(null);
+  const screen = document.getElementById('login-screen');
+  screen.style.display = 'flex';
+  requestAnimationFrame(() => { screen.style.opacity = '1'; });
+}
+
+function updateCurrentUserLabel(member) {
+  const label = document.getElementById('current-user-label');
+  if (!label) return;
+  label.textContent = member ? `${member.name} · ${member.id === LEADER_ID ? '리더' : member.instrument}` : '';
+}
+
+function isLeader() {
+  return currentUserId === LEADER_ID;
+}
+
+function requireLeader() {
+  if (isLeader()) return true;
+  showToast('조진흠 리더 계정에서만 수정할 수 있습니다');
+  return false;
+}
+
+// ═══════════════ NAV ═══════════════
+function navigateTo(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  const n = document.getElementById('nav-' + page);
+  if (n) n.classList.add('active');
+  currentPage = page;
+
+  const titles = { home:'Band Desk', notice:'공지사항', songs:'곡 관리', tasks:'할 일', calendar:'달력', competition:'대회 정보' };
+  document.getElementById('page-title').textContent = titles[page] || 'Band Desk';
+
+  if (page === 'songs')       renderSongs();
+  if (page === 'tasks')       renderTasks();
+  if (page === 'calendar')    renderCalendar();
+  if (page === 'notice')      renderNotices();
+  if (page === 'competition') renderCompetitions();
+  updateLeaderControls();
+}
+
+function updateLeaderControls() {
+  const leader = isLeader();
+  const fab = document.getElementById('fab');
+  if (fab) {
+    const editablePage = currentPage === 'notice' || currentPage === 'tasks' || currentPage === 'songs' || currentPage === 'calendar';
+    const canEditThisPage = currentPage === 'calendar' ? !!currentUserId : leader;
+    fab.style.display = editablePage && canEditThisPage ? 'flex' : 'none';
+  }
+  const scheduleBtn = document.getElementById('schedule-edit-btn');
+  if (scheduleBtn) scheduleBtn.style.display = currentUserId ? 'block' : 'none';
+  const bandEventBtn = document.getElementById('band-event-edit-btn');
+  if (bandEventBtn) bandEventBtn.style.display = leader ? 'block' : 'none';
+  const scanBtn = document.getElementById('leader-competition-scan');
+  if (scanBtn) scanBtn.style.display = leader ? 'block' : 'none';
+  const setlistLink = document.getElementById('home-setlist-link');
+  if (setlistLink) setlistLink.textContent = leader ? '설정 →' : '보기 →';
+  const setlistEditHint = document.getElementById('setlist-edit-hint');
+  if (setlistEditHint) {
+    setlistEditHint.style.display = leader ? 'inline' : 'none';
+  }
+}
+
+// ═══════════════ TOAST ═══════════════
+let toastTimer;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+function requestAppNotification() {
+  if (!('Notification' in window)) {
+    showToast('이 브라우저는 알림을 지원하지 않습니다');
+    return;
+  }
+  Notification.requestPermission().then(result => {
+    showToast(result === 'granted' ? '알림을 켰습니다' : '알림 권한이 꺼져 있습니다');
+    if (result === 'granted') preparePushSubscription();
+  });
+}
+
+async function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) return null;
+  try {
+    return await navigator.serviceWorker.register('./service-worker.js');
+  } catch {
+    showToast('앱 설치 준비를 완료하지 못했습니다');
+    return null;
+  }
+}
+
+async function preparePushSubscription() {
+  const registration = await navigator.serviceWorker?.ready;
+  if (!registration || !('PushManager' in window)) return null;
+  // 추후 서버와 VAPID 공개키가 준비되면 여기에서 pushManager.subscribe()를 호출하고 구독 정보를 저장합니다.
+  return registration;
+}
+
+function openSettings() {
+  const theme = localStorage.getItem(THEME_KEY) || 'light';
+  const notificationText = 'Notification' in window
+    ? (Notification.permission === 'granted' ? '알림 켜짐' : '알림 꺼짐')
+    : '알림 미지원';
+  showModal(`
+    <div class="modal-title">환경설정</div>
+    <div class="form-group">
+      <label class="form-label">화면 모드</label>
+      <div class="tab-bar">
+        <button class="tab-btn ${theme === 'light' ? 'active' : ''}" onclick="setThemeFromSettings('light')">라이트</button>
+        <button class="tab-btn ${theme === 'dark' ? 'active' : ''}" onclick="setThemeFromSettings('dark')">다크</button>
+      </div>
+    </div>
+    <div class="list-group">
+      <button class="btn-primary" onclick="requestAppNotification();closeModal()" style="background:var(--c-blue-dark)">알림 설정 · ${notificationText}</button>
+      <button class="btn-primary" onclick="closeModal();logout()" style="background:var(--c-red-base)">로그아웃</button>
+    </div>
+  `);
+}
+
+function setThemeFromSettings(theme) {
+  applyTheme(theme);
+  closeModal();
+  openSettings();
+}
+
+// ═══════════════ HOME ═══════════════
+function renderHome() {
+  renderNextBandEvent();
+  // setlist preview
+  const sl = document.getElementById('home-setlist');
+  const songs = setlist.map(id => SONGS.find(s => s.id === id)).filter(Boolean);
+  sl.innerHTML = songs.length ? songs.map((s, i) => `
+    <div class="list-item ${isCoverSong(s) ? 'cover-song' : ''}">
+      <div class="song-num">${String(i+1).padStart(2,'0')}</div>
+      <div class="item-content">
+        <div class="item-title">${s.title}</div>
+        <div class="item-sub">${s.artist || '아티스트 미입력'}</div>
+      </div>
+      <div class="file-actions">
+        <div class="file-badge mp3 ${s.mp3?'on':'off'}" onclick="${s.mp3?`togglePlay(${s.id})`:"showToast('MP3 없음')"}">
+          ${s.id===playingId?I.pause:I.play}
+        </div>
+        <div class="file-badge sheet ${s.sheet?'on':'off'}" onclick="${s.sheet?`openSheet(${s.id})`:"showToast('악보 없음')"}">
+          ${I.sheet}
+        </div>
+      </div>
+    </div>
+  `).join('') : '<div style="color:var(--c-text-muted);font-size:14px;text-align:center;padding:var(--space-4)">합주 곡을 추가하세요</div>';
+
+  // my tasks
+  const myT = tasks.filter(t => t.mid === currentUserId).slice(0, 3);
+  const ht = document.getElementById('home-tasks');
+  ht.innerHTML = myT.map(t => `
+    <div class="list-item surface task-item ${t.done?'done':''}" id="ht-${t.id}">
+      <div class="task-checkbox" onclick="toggleTask(${t.id})">${t.done?I.check:''}</div>
+      <div class="item-content">
+        <div class="item-title">${t.title}</div>
+        <div class="item-sub text-mono">기한: ${t.dl}</div>
+      </div>
+      <span class="tag muted">내 할일</span>
+    </div>
+  `).join('');
+
+  // stats
+  document.getElementById('stat-songs').textContent = SONGS.length;
+  document.getElementById('stat-setlist').textContent = setlist.length;
+  document.getElementById('stat-done').textContent = tasks.filter(t => t.done).length;
+  updateLeaderControls();
+}
+
+function getNextBandEvent() {
+  const today = dateKey(new Date());
+  return [...bandEvents]
+    .filter(event => event.date >= today)
+    .sort((a,b) => `${a.date} ${a.time || ''}`.localeCompare(`${b.date} ${b.time || ''}`))[0] || null;
+}
+
+function renderNextBandEvent() {
+  const event = getNextBandEvent();
+  setText('next-event-kind', event
+    ? (event.type === 'performance' ? '다음 공연 일정' : '다음 정기 합주')
+    : '다음 정기 합주');
+  setText('next-event-title', event
+    ? `${formatEventDate(event.date)} ${event.time || ''}`.trim()
+    : '등록된 일정 없음');
+  setText('next-event-place', event
+    ? `${event.title}${event.place ? ' · ' + event.place : ''}`
+    : '조진흠 리더 계정에서 일정을 등록해 주세요');
+  setText('next-event-dday', getDDayLabel(event?.date));
+}
+
+function openNextBandEventEditor() {
+  const event = getNextBandEvent();
+  selectedDate = event?.date || dateKey(new Date());
+  const targetDate = new Date(`${selectedDate}T00:00:00`);
+  calDate = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1);
+  navigateTo('calendar');
+}
+
+// ═══════════════ NOTICE ═══════════════
+function renderNotices() {
+  const sorted = [...notices].sort((a,b) => (b.pinned?1:0) - (a.pinned?1:0));
+  const tc = { schedule:'blue', general:'muted', competition:'orange' };
+  const tl = { schedule:'일정', general:'일반', competition:'대회' };
+  document.getElementById('notice-list').innerHTML = sorted.map(n => {
+    const noticeId = JSON.stringify(n.id);
+    return `
+    <div class="notice-item ${n.pinned?'pinned':''}" onclick="openNotice(${noticeId})">
+      <div class="notice-hdr">
+        ${n.pinned?`<span class="pin-icon" style="color:var(--c-blue-base)">${I.pin}</span>`:''}
+        <span class="tag ${tc[n.type]}">${tl[n.type]}</span>
+      </div>
+      <div style="font-weight:600">${n.title}</div>
+      <div class="notice-preview">${n.content}</div>
+      <div class="notice-footer">
+        <span>${n.author}</span><span>${n.date}</span>
+      </div>
+    </div>
+  `}).join('');
+  updateLeaderControls();
+}
+
+function openNotice(id) {
+  const n = notices.find(x => x.id === id);
+  if (!n) return;
+  const noticeId = JSON.stringify(id);
+  const tc = { schedule:'blue', general:'muted', competition:'orange' };
+  const tl = { schedule:'일정', general:'일반', competition:'대회' };
+  showModal(`
+    <div style="margin-bottom:var(--space-3)"><span class="tag ${tc[n.type]}">${tl[n.type]}</span></div>
+    <div class="modal-title">${n.title}</div>
+    <div style="font-size:14px;line-height:1.75;color:var(--c-text-muted);margin-bottom:var(--space-5)">${n.content}</div>
+    <div style="display:flex;gap:var(--space-4);font-size:13px;color:var(--c-text-muted);border-top:1px solid var(--c-border);padding-top:var(--space-4)">
+      <span>작성자: ${n.author}</span><span>${n.date}</span>
+    </div>
+    <div style="display:flex;gap:var(--space-2);margin-top:var(--space-5)">
+      ${n.type === 'competition' ? `<button class="btn-primary" onclick="closeModal();navigateTo('competition')" style="background:var(--c-orange-base);flex:1">대회 정보 보기</button>` : ''}
+      ${isLeader() ? `<button class="btn-primary" onclick="openEditNotice(${noticeId})" style="background:var(--c-blue-base);flex:1">수정</button>
+      <button class="btn-primary" onclick="deleteNotice(${noticeId})" style="background:var(--c-red-base);flex:1">삭제</button>` : ''}
+    </div>
+  `);
+}
+
+function escapeAttr(value = '') {
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('"', '&quot;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;');
+}
+
+// ═══════════════ SONGS ═══════════════
+function switchSongsTab(tab) {
+  songsTabActive = tab;
+  document.getElementById('tab-library').classList.toggle('active', tab==='library');
+  document.getElementById('tab-setlist').classList.toggle('active', tab==='setlist');
+  document.getElementById('songs-library').style.display = tab==='library'?'block':'none';
+  document.getElementById('songs-setlist').style.display = tab==='setlist'?'block':'none';
+  renderSongs();
+}
+
+function renderSongs() { renderLibrary(); renderSetlistView(); }
+
+function renderLibrary() {
+  document.getElementById('library-list').innerHTML = SONGS.map(s => {
+    const inSL = setlist.includes(s.id);
+    const playing = playingId === s.id;
+    return `
+      <div class="list-item surface" style="flex-direction:column;align-items:stretch;gap:0;padding:var(--space-4)">
+        <div style="display:flex;align-items:center;gap:var(--space-3)">
+          <div style="width:42px;height:42px;border-radius:var(--radius-md);background:var(--c-blue-pale);display:flex;align-items:center;justify-content:center;color:var(--c-blue-base);flex-shrink:0">
+            <svg width="22" height="22" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+          </div>
+          <div class="item-content">
+            <div class="item-title">${s.title}</div>
+            <div class="item-sub">${s.artist || '아티스트 미입력'}</div>
+          </div>
+          <div class="file-actions">
+            <div class="file-badge mp3 ${s.mp3?(playing?'on':'on'):'off'}" id="mp3btn-${s.id}"
+                 onclick="${s.mp3?`togglePlay(${s.id})`:"showToast('MP3 파일이 없습니다')"}">
+              ${playing?I.pause:I.play}
+            </div>
+            <div class="file-badge sheet ${s.sheet?'on':'off'}"
+                 onclick="${s.sheet?`openSheet(${s.id})`:"showToast('악보 파일이 없습니다')"}">
+              ${I.sheet}
+            </div>
+          </div>
+        </div>
+        ${playing ? `
+        <div class="audio-player" id="aplayer-${s.id}">
+          <div style="color:var(--c-blue-base);cursor:pointer;display:flex" onclick="togglePlay(${s.id})">${I.pause}</div>
+          <div class="audio-bar"><div class="audio-fill" id="afill-${s.id}" style="width:0%"></div></div>
+          <span class="audio-time" id="atime-${s.id}">0:00</span>
+        </div>` : ''}
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:var(--space-3);padding-top:var(--space-3);border-top:1px solid var(--c-border)">
+          <div style="display:flex;gap:var(--space-2)">
+            ${s.mp3?`<span class="tag blue">${s.mp3Name || 'MP3'}</span>`:'<span class="tag muted">MP3 없음</span>'}
+            ${s.sheet?`<span class="tag orange">${s.sheetName || '악보'}</span>`:'<span class="tag muted">악보 없음</span>'}
+          </div>
+          ${isLeader() ? `<div style="display:flex;gap:var(--space-2);flex-wrap:wrap;justify-content:flex-end">
+            <button onclick="openEditSong(${s.id})" style="
+              background:var(--c-blue-pale);
+              color:var(--c-blue-base);
+              border:none;border-radius:var(--radius-pill);
+              padding:5px 13px;font-size:12px;font-weight:600;cursor:pointer">
+              수정
+            </button>
+            <button onclick="toggleSetlist(${s.id})" style="
+              background:${inSL?'var(--c-red-pale)':'var(--c-green-pale)'};
+              color:${inSL?'var(--c-red-base)':'var(--c-green-base)'};
+              border:none;border-radius:var(--radius-pill);
+              padding:5px 13px;font-size:12px;font-weight:600;cursor:pointer">
+              ${inSL?'합주곡 제거':'합주곡 추가'}
+            </button>
+          </div>` : '<span class="tag muted">보기 전용</span>'}
+        </div>
+      </div>
+    `;
+  }).join('');
+  updateLeaderControls();
+}
+
+function renderSetlistView() {
+  const el = document.getElementById('setlist-list');
+  const songs = setlist.map(id => SONGS.find(s => s.id === id)).filter(Boolean);
+  el.innerHTML = songs.length ? songs.map((s,i) => `
+    <div class="list-item surface">
+      <div class="song-num">${String(i+1).padStart(2,'0')}</div>
+      <div class="item-content">
+        <div class="item-title">${s.title}</div>
+        <div class="item-sub">${s.artist || '아티스트 미입력'}</div>
+      </div>
+      <div class="file-actions">
+        <div class="file-badge mp3 ${s.mp3?'on':'off'}" onclick="${s.mp3?`togglePlay(${s.id})`:"showToast('MP3 없음')"}">
+          ${s.id===playingId?I.pause:I.play}
+        </div>
+        <div class="file-badge sheet ${s.sheet?'on':'off'}" onclick="${s.sheet?`openSheet(${s.id})`:"showToast('악보 없음')"}">
+          ${I.sheet}
+        </div>
+      </div>
+    </div>
+  `).join('') : '<div style="color:var(--c-text-muted);font-size:14px;text-align:center;padding:var(--space-5)">합주 곡이 없습니다<br><span style="font-size:12px">라이브러리에서 곡을 추가하세요</span></div>';
+  updateLeaderControls();
+}
+
+function toggleSetlist(songId) {
+  if (!requireLeader()) return;
+  setlist = setlist.includes(songId) ? setlist.filter(id => id !== songId) : [...setlist, songId];
+  saveAppState();
+  renderLibrary();
+  renderSetlistView();
+  renderHome();
+  showToast(setlist.includes(songId) ? '합주곡 목록에서 제거했습니다' : '합주곡에 추가했습니다');
+}
+
+function togglePlay(songId) {
+  if (playingId === songId) {
+    clearInterval(audioTimer);
+    playingId = null; audioSec = 0;
+  } else {
+    clearInterval(audioTimer);
+    playingId = songId; audioSec = 0;
+    audioTimer = setInterval(() => {
+      audioSec++;
+      const fill = document.getElementById('afill-' + songId);
+      const time = document.getElementById('atime-' + songId);
+      const pct = Math.min((audioSec / 210) * 100, 100);
+      if (fill) fill.style.width = pct + '%';
+      if (time) {
+        const m = Math.floor(audioSec/60), s = audioSec%60;
+        time.textContent = `${m}:${String(s).padStart(2,'0')}`;
+      }
+      if (audioSec >= 210) { clearInterval(audioTimer); playingId = null; audioSec = 0; renderLibrary(); renderHome(); }
+    }, 1000);
+  }
+  renderLibrary(); renderHome(); renderSetlistView();
+}
+
+function openSheet(songId) {
+  const s = SONGS.find(x => x.id === songId);
+  showModal(`
+    <div class="modal-title">${s.title} — 악보</div>
+    <div style="background:var(--c-orange-pale);border-radius:var(--radius-md);padding:var(--space-8);text-align:center;margin-bottom:var(--space-5)">
+      <div style="font-size:48px;margin-bottom:var(--space-3)">🎼</div>
+      <div style="font-weight:700;font-size:16px">${s.title}</div>
+      <div style="font-size:13px;color:var(--c-text-muted);margin-top:4px">${s.artist}</div>
+      <div style="margin-top:var(--space-4);font-size:12px;color:var(--c-text-muted)">실제 앱에서는 PDF 악보가 여기에 표시됩니다</div>
+    </div>
+    <div style="display:flex;gap:var(--space-3)">
+      <button class="btn-primary" style="background:var(--c-orange-base)" onclick="showToast('악보를 다운로드합니다');closeModal()">다운로드</button>
+      <button class="btn-primary" onclick="closeModal()">닫기</button>
+    </div>
+  `);
+}
+
+// ═══════════════ TASKS ═══════════════
+function renderTasks() {
+  // chips
+  document.getElementById('member-chips').innerHTML = MEMBERS.map(m => `
+    <div class="member-chip ${m.id===activeMember?'active':''}"
+         style="color:${m.id===activeMember?m.color:'var(--c-text-muted)'};border-color:${m.id===activeMember?m.color:'var(--c-border)'}"
+         onclick="selectMember('${m.id}')">
+      <div class="member-chip-av" style="background:${m.id===activeMember?m.color:'#ccc'}">${m.short}</div>
+      ${m.name} · ${m.instrument}${m.id===currentUserId?' (나)':''}
+    </div>
+  `).join('');
+  renderTaskList();
+  updateLeaderControls();
+}
+
+function selectMember(mid) { activeMember = mid; renderTasks(); }
+
+function renderTaskList() {
+  const mt = tasks.filter(t => t.mid === activeMember);
+  const el = document.getElementById('task-list');
+  if (!mt.length) {
+    el.innerHTML = '<div style="text-align:center;color:var(--c-text-muted);padding:var(--space-8)">할 일이 없습니다</div>';
+    updateLeaderControls();
+    return;
+  }
+  const pending = mt.filter(t => !t.done);
+  const done    = mt.filter(t =>  t.done);
+  let h = '';
+  if (pending.length) {
+    h += `<div style="font-size:11px;font-weight:600;color:var(--c-text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">진행 중 ${pending.length}</div>`;
+    h += pending.map(t => taskHTML(t)).join('');
+  }
+  if (done.length) {
+    h += `<div style="font-size:11px;font-weight:600;color:var(--c-text-muted);text-transform:uppercase;letter-spacing:.5px;margin:var(--space-4) 0 4px">완료 ${done.length}</div>`;
+    h += done.map(t => taskHTML(t)).join('');
+  }
+  el.innerHTML = h;
+  updateLeaderControls();
+}
+
+function taskHTML(t) {
+  return `
+    <div class="list-item surface task-item ${t.done?'done':''}" id="task-${t.id}">
+      <div class="task-checkbox" onclick="toggleTask(${t.id})">${t.done?I.check:''}</div>
+      <div class="item-content">
+        <div class="item-title">${t.title}</div>
+        <div class="item-sub text-mono">기한: ${t.dl}</div>
+      </div>
+      ${isLeader() ? `<button onclick="delTask(${t.id})" style="background:none;border:none;color:var(--c-text-muted);cursor:pointer;padding:4px;display:flex">${I.del}</button>` : ''}
+    </div>
+  `;
+}
+
+function toggleTask(id) {
+  const t = tasks.find(x => x.id === id);
+  if (!t) return;
+  t.done = !t.done;
+  saveAppState();
+  renderTaskList();
+  renderHome();
+  showToast(t.done ? '완료 처리했습니다 ✓' : '미완료로 변경했습니다');
+}
+
+function delTask(id) {
+  if (!requireLeader()) return;
+  tasks = tasks.filter(t => t.id !== id);
+  saveAppState();
+  renderTaskList();
+  renderHome();
+  showToast('삭제했습니다');
+}
+
+// ═══════════════ CALENDAR ═══════════════
+function renderCalendar() {
+  const y = calDate.getFullYear(), m = calDate.getMonth();
+  document.getElementById('cal-label').textContent = `${y}년 ${m+1}월`;
+
+  const today = new Date();
+  const firstDow = new Date(y, m, 1).getDay();
+  const daysInM  = new Date(y, m+1, 0).getDate();
+  const prevDays = new Date(y, m, 0).getDate();
+
+  const LABELS = ['일','월','화','수','목','금','토'];
+  let html = LABELS.map(d => `<div class="cal-day-label">${d}</div>`).join('');
+
+  for (let i = firstDow-1; i >= 0; i--)
+    html += `<div class="cal-cell other"><div class="cal-day-num">${prevDays-i}</div></div>`;
+
+  for (let d = 1; d <= daysInM; d++) {
+    const key = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday = today.getFullYear()===y && today.getMonth()===m && today.getDate()===d;
+    const sc = (schedules[key]||[]).filter(id => calFilter.includes(id));
+    const dayEvents = bandEvents.filter(event => event.date === key);
+    const isSel = key === selectedDate;
+    const dots = sc.slice(0,5).map(id => {
+      const mm = MEMBERS.find(x => x.id===id);
+      return `<div class="cal-dot" style="background:${mm?mm.color:'#ccc'}"></div>`;
+    }).join('');
+    html += `
+      <div class="cal-cell ${isToday?'today':''} ${dayEvents.length?'band-event':''} ${isSel?'selected':''}"
+           onclick="selectDay('${key}',${d})">
+        <div class="cal-day-num">${d}</div>
+        <div class="cal-dots">${dots}</div>
+        ${dayEvents.length ? '<div class="cal-event-dot"></div>' : ''}
+      </div>`;
+  }
+  document.getElementById('cal-grid').innerHTML = html;
+
+  // filter chips
+  document.getElementById('cal-filter').innerHTML = MEMBERS.map(m => `
+    <div class="member-chip ${calFilter.includes(m.id)?'active':''}"
+         style="color:${calFilter.includes(m.id)?m.color:'var(--c-text-muted)'};border-color:${calFilter.includes(m.id)?m.color:'var(--c-border)'}"
+         onclick="toggleCalFilter('${m.id}')">
+      <div class="member-chip-av" style="background:${calFilter.includes(m.id)?m.color:'#ccc'}">${m.short}</div>
+      ${m.name} · ${m.instrument}${m.id===currentUserId?' (나)':''}
+    </div>
+  `).join('');
+
+  if (selectedDate) showDayDetail(selectedDate);
+  updateLeaderControls();
+}
+
+function selectDay(key, d) {
+  selectedDate = key;
+  showDayDetail(key);
+  renderCalendar();
+}
+
+function showDayDetail(key) {
+  const [y,m,d] = key.split('-');
+  document.getElementById('cal-detail-title').textContent = `${parseInt(m)}월 ${parseInt(d)}일`;
+  const dayEvents = bandEvents.filter(event => event.date === key);
+  const eventEl = document.getElementById('cal-detail-events');
+  eventEl.innerHTML = dayEvents.length ? dayEvents.map(event => `
+    <div class="list-item surface">
+      <div style="width:40px;height:40px;border-radius:var(--radius-md);background:${event.type === 'performance' ? 'var(--c-orange-pale)' : 'var(--c-blue-pale)'};color:${event.type === 'performance' ? 'var(--c-orange-base)' : 'var(--c-blue-base)'};display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0">
+        ${event.type === 'performance' ? '공연' : '합주'}
+      </div>
+      <div class="item-content">
+        <div class="item-title">${event.title}</div>
+        <div class="item-sub">${event.time || '시간 미정'}${event.place ? ' · ' + event.place : ''}</div>
+        ${event.memo ? `<div class="item-sub" style="margin-top:3px;white-space:pre-wrap;overflow-wrap:anywhere">${event.memo}</div>` : ''}
+      </div>
+      ${isLeader() ? `<button onclick="showBandEventModal(${event.id})" style="background:none;border:none;color:var(--c-blue-base);font-weight:700;cursor:pointer">수정</button>` : ''}
+    </div>
+  `).join('') : `<div style="color:var(--c-text-muted);font-size:14px;text-align:center;padding:var(--space-3);background:var(--c-bg);border-radius:var(--radius-md)">등록된 합주/공연 일정이 없습니다</div>`;
+  const sc = schedules[key] || [];
+  const el = document.getElementById('cal-detail-members');
+  el.innerHTML = sc.length ? sc.map(id => {
+    const mm = MEMBERS.find(x => x.id===id);
+    return `
+      <div class="member-row">
+        <div class="member-av" style="background:${mm.color}">${mm.short}</div>
+        <div>
+          <div style="font-weight:600">${mm.name}</div>
+          <div style="font-size:13px;color:var(--c-text-muted)">${mm.instrument}${mm.id === LEADER_ID ? ' · 리더' : ''}</div>
+        </div>
+        <span class="tag green" style="margin-left:auto">참석 가능</span>
+      </div>`;
+  }).join('') : `<div style="color:var(--c-text-muted);font-size:14px;text-align:center;padding:var(--space-4)">등록된 일정이 없습니다</div>`;
+  document.getElementById('cal-detail').style.display = 'block';
+  updateLeaderControls();
+}
+
+function toggleCalFilter(id) {
+  if (calFilter.includes(id)) {
+    if (calFilter.length === 1) return;
+    calFilter = calFilter.filter(x => x !== id);
+  } else {
+    calFilter.push(id);
+  }
+  renderCalendar();
+}
+
+function changeMonth(d) {
+  calDate.setMonth(calDate.getMonth() + d);
+  selectedDate = null;
+  document.getElementById('cal-detail').style.display = 'none';
+  renderCalendar();
+}
+
+function showAddScheduleModal() {
+  if (!selectedDate) {
+    showToast('달력에서 날짜를 먼저 선택하세요');
+    return;
+  }
+  if (!currentUserId) {
+    showToast('로그인 후 일정을 수정할 수 있습니다');
+    return;
+  }
+  const [y,m,d] = selectedDate.split('-');
+  const editableMembers = isLeader() ? MEMBERS : MEMBERS.filter(mm => mm.id === currentUserId);
+  showModal(`
+    <div class="modal-title">${parseInt(m)}월 ${parseInt(d)}일 일정 수정</div>
+    <div style="font-size:13px;color:var(--c-text-muted);line-height:1.6;margin-bottom:var(--space-4)">
+      ${isLeader() ? '리더 계정으로 모든 멤버의 참석 가능 여부를 관리합니다.' : '내 일정만 수정할 수 있습니다.'}
+    </div>
+    <div class="form-group">
+      <label class="form-label">참석 멤버</label>
+      <div style="display:flex;flex-direction:column;gap:var(--space-2)" id="sched-checks">
+        ${editableMembers.map(mm => {
+          const has = (schedules[selectedDate]||[]).includes(mm.id);
+          return `
+            <label style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3);border:1.5px solid ${has?mm.color:'var(--c-border)'};border-radius:var(--radius-md);cursor:pointer;background:${has?mm.color+'11':'var(--c-bg)'}">
+              <input type="checkbox" ${has?'checked':''} value="${mm.id}" style="accent-color:${mm.color}">
+              <div class="member-av" style="background:${mm.color};width:30px;height:30px;font-size:12px">${mm.short}</div>
+              <div>
+                <div style="font-weight:600">${mm.name}</div>
+                <div style="font-size:12px;color:var(--c-text-muted)">${mm.instrument}${mm.id === LEADER_ID ? ' · 리더' : ''}</div>
+              </div>
+            </label>`;
+        }).join('')}
+      </div>
+    </div>
+    <button class="btn-primary" onclick="saveSchedule()">저장</button>
+  `);
+}
+
+function saveSchedule() {
+  if (!currentUserId) {
+    showToast('로그인 후 일정을 수정할 수 있습니다');
+    return;
+  }
+  const checks = document.querySelectorAll('#sched-checks input[type=checkbox]');
+  const selected = [...checks].filter(c => c.checked).map(c => c.value);
+  if (selectedDate) {
+    if (isLeader()) {
+      schedules[selectedDate] = selected;
+    } else {
+      const existing = schedules[selectedDate] || [];
+      schedules[selectedDate] = selected.includes(currentUserId)
+        ? [...new Set([...existing, currentUserId])]
+        : existing.filter(id => id !== currentUserId);
+    }
+  }
+  saveAppState();
+  closeModal();
+  renderCalendar();
+  showToast('일정을 저장했습니다');
+}
+
+function showBandEventModal(eventId = null) {
+  if (!requireLeader()) return;
+  if (!selectedDate) {
+    showToast('달력에서 날짜를 먼저 선택하세요');
+    return;
+  }
+  const event = bandEvents.find(item => item.id === eventId);
+  const eventDate = event?.date || selectedDate;
+  const [y,m,d] = eventDate.split('-');
+  showModal(`
+    <div class="modal-title">${parseInt(m)}월 ${parseInt(d)}일 합주/공연 일정</div>
+    <div class="form-group">
+      <label class="form-label">종류</label>
+      <select class="form-select" id="band-event-type">
+        <option value="rehearsal" ${event?.type === 'rehearsal' ? 'selected' : ''}>합주</option>
+        <option value="performance" ${event?.type === 'performance' ? 'selected' : ''}>공연</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">제목</label>
+      <input class="form-input" id="band-event-title" value="${event?.title || ''}" placeholder="예: 정기 합주, 학교 축제 공연" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">날짜</label>
+      <input class="form-input" id="band-event-date" type="date" value="${eventDate}" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">시간</label>
+      <input class="form-input" id="band-event-time" type="time" value="${event?.time || ''}" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">장소</label>
+      <input class="form-input" id="band-event-place" value="${event?.place || ''}" placeholder="예: 홍대 A스튜디오 3번방" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">메모</label>
+      <textarea class="form-textarea" id="band-event-memo" placeholder="합주 목표나 공연 준비사항">${event?.memo || ''}</textarea>
+    </div>
+    <button class="btn-primary" onclick="saveBandEvent(${event?.id || 'null'})">${event ? '일정 수정' : '일정 등록'}</button>
+    ${event ? `<button class="btn-primary" style="margin-top:var(--space-2);background:var(--c-red-base)" onclick="deleteBandEvent(${event.id})">일정 삭제</button>` : ''}
+  `);
+}
+
+function saveBandEvent(eventId = null) {
+  if (!requireLeader()) return;
+  const title = document.getElementById('band-event-title').value.trim();
+  if (!title) {
+    showToast('일정 제목을 입력하세요');
+    return;
+  }
+  const data = {
+    type: document.getElementById('band-event-type').value,
+    title,
+    date: document.getElementById('band-event-date').value || selectedDate,
+    time: document.getElementById('band-event-time').value,
+    place: document.getElementById('band-event-place').value.trim(),
+    memo: document.getElementById('band-event-memo').value.trim(),
+  };
+  if (eventId) {
+    bandEvents = bandEvents.map(event => event.id === eventId ? { ...event, ...data } : event);
+  } else {
+    bandEvents.push({ id: Date.now(), ...data });
+  }
+  saveAppState();
+  selectedDate = data.date;
+  const targetDate = new Date(`${data.date}T00:00:00`);
+  calDate = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1);
+  closeModal();
+  renderCalendar();
+  renderHome();
+  showToast('밴드 일정을 저장했습니다');
+}
+
+function deleteBandEvent(eventId) {
+  if (!requireLeader()) return;
+  bandEvents = bandEvents.filter(event => event.id !== eventId);
+  saveAppState();
+  closeModal();
+  renderCalendar();
+  renderHome();
+  showToast('밴드 일정을 삭제했습니다');
+}
+
+// ═══════════════ COMPETITION ═══════════════
+function renderCompetitions() {
+  document.getElementById('competition-list').innerHTML = COMPETITIONS.map((c, index) => `
+    <div class="comp-card ${index % 2 === 0 ? 'warm' : 'cool'}">
+      <div class="comp-header">
+        <div style="font-size:11px;font-weight:600;letter-spacing:.5px;color:rgba(255,255,255,.75);margin-bottom:var(--space-2)">
+          ${c.status==='open'?'🔴  접수 중':'🟡  접수 예정'}
+        </div>
+        <div style="font-size:18px;font-weight:700;margin-bottom:4px">${c.title}</div>
+        <div style="font-size:13px;color:rgba(255,255,255,.75)">${c.organizer}</div>
+      </div>
+      <div class="comp-body">
+        <div style="font-size:14px;color:var(--c-text-muted);line-height:1.65;margin-bottom:var(--space-4)">${c.desc}</div>
+        <div class="comp-row"><span class="comp-row-label">대회 일자</span><span class="comp-row-value">${c.date}</span></div>
+        <div class="comp-row">
+          <span class="comp-row-label">접수 마감</span>
+          <span class="comp-row-value" style="color:${c.status==='open'?'var(--c-red-base)':'var(--c-text-main)'}">${c.deadline}</span>
+        </div>
+        <div class="comp-row"><span class="comp-row-label">장소</span><span class="comp-row-value">${c.venue}</span></div>
+        <div class="comp-row"><span class="comp-row-label">시상</span><span class="comp-row-value">${c.prize}</span></div>
+        <button class="btn-primary" style="margin-top:var(--space-4);background:${c.status==='open'?'var(--comp-action)':'var(--c-text-muted)'}"
+                ${c.status!=='open'?'disabled':''} onclick="${c.status==='open'?(c.url?`window.open('${c.url}','_blank','noopener')`:`showToast('참가 신청 페이지로 이동합니다')`):''}" >
+          ${c.status==='open'?'참가 신청하기':'접수 예정'}
+        </button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function scanCompetitionNotice() {
+  if (!requireLeader()) return;
+  const exists = COMPETITIONS.some(c => c.title.includes('청소년 밴드 챔피언십'));
+  if (!exists) {
+    COMPETITIONS.unshift({
+	      id: Date.now(), status:'open',
+	      title:'전국 청소년 밴드 챔피언십',
+	      organizer:'한국실용음악협회',
+	      date:'2026. 12. 21',
+	      deadline:'2026. 11. 30',
+      venue:'상암 문화광장',
+      prize:'대상 500만원 / 음원 제작 지원',
+      desc:'새 공고 확인 기능으로 자동 등록된 샘플 대회입니다. 실제 앱에서는 지정한 공고 페이지나 API를 주기적으로 확인해 이 목록에 올립니다.',
+    });
+    notices.unshift({
+      id: Date.now() + 1, type:'competition',
+      title:'전국 청소년 밴드 챔피언십 새 공고',
+      content:'대회 정보 페이지에 새 공고가 자동 등록되었습니다. 접수 마감일과 참가 조건을 확인해 주세요.',
+      author:'Band Desk', date:'오늘', pinned:true,
+    });
+    saveAppState();
+  }
+  renderCompetitions();
+  renderNotices();
+  showToast(exists ? '새 공고가 없습니다' : '새 대회 공고를 등록했습니다');
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification('새 대회 공고', { body:'전국 청소년 밴드 챔피언십이 등록되었습니다.' });
+  }
+}
+
+// ═══════════════ MODAL ═══════════════
+function showModal(html) {
+  document.getElementById('modal-content').innerHTML = html;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function closeModal(e) {
+  if (!e || e.target === document.getElementById('modal-overlay'))
+    document.getElementById('modal-overlay').classList.remove('open');
+}
+
+// ═══════════════ FAB ═══════════════
+function handleFab() {
+  if (currentPage === 'calendar') {
+    showAddScheduleModal();
+    return;
+  }
+  if (!requireLeader()) return;
+  if (currentPage === 'notice') openAddNotice();
+  if (currentPage === 'tasks')  openAddTask();
+  if (currentPage === 'songs')  openAddSong();
+}
+
+function openAddNotice() {
+  if (!requireLeader()) return;
+  showModal(`
+    <div class="modal-title">공지 작성</div>
+    <div class="form-group">
+      <label class="form-label">종류</label>
+      <select class="form-select" id="n-type">
+        <option value="schedule">일정</option>
+        <option value="general">일반</option>
+        <option value="competition">대회</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">제목</label>
+      <input class="form-input" id="n-title" placeholder="공지 제목 입력" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">내용</label>
+      <textarea class="form-textarea" id="n-content" placeholder="공지 내용 입력"></textarea>
+    </div>
+    <div class="form-group" style="display:flex;align-items:center;gap:var(--space-3)">
+      <input type="checkbox" id="n-pinned" style="accent-color:var(--c-blue-base)">
+      <label for="n-pinned" style="font-size:14px;font-weight:500;cursor:pointer">상단 고정</label>
+    </div>
+    <button class="btn-primary" onclick="submitNotice()">공지 올리기</button>
+  `);
+}
+
+function submitNotice() {
+  if (!requireLeader()) return;
+  const title = document.getElementById('n-title').value.trim();
+  if (!title) { showToast('제목을 입력하세요'); return; }
+  notices.unshift({
+    id: Date.now(), type: document.getElementById('n-type').value,
+    title, content: document.getElementById('n-content').value.trim() || '내용 없음',
+    author: MEMBERS.find(m=>m.id===currentUserId)?.name || '알 수 없음', date:'오늘',
+    pinned: document.getElementById('n-pinned').checked,
+  });
+  saveAppState();
+  closeModal();
+  renderNotices();
+  showToast('공지가 등록되었습니다');
+}
+
+function openEditNotice(id) {
+  if (!requireLeader()) return;
+  const n = notices.find(x => x.id === id);
+  if (!n) return;
+  const noticeId = JSON.stringify(id);
+  showModal(`
+    <div class="modal-title">공지 수정</div>
+    <div class="form-group">
+      <label class="form-label">종류</label>
+      <select class="form-select" id="edit-n-type">
+        <option value="schedule" ${n.type === 'schedule' ? 'selected' : ''}>일정</option>
+        <option value="general" ${n.type === 'general' ? 'selected' : ''}>일반</option>
+        <option value="competition" ${n.type === 'competition' ? 'selected' : ''}>대회</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">제목</label>
+      <input class="form-input" id="edit-n-title" value="${escapeAttr(n.title)}" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">내용</label>
+      <textarea class="form-textarea" id="edit-n-content">${escapeAttr(n.content)}</textarea>
+    </div>
+    <div class="form-group" style="display:flex;align-items:center;gap:var(--space-3)">
+      <input type="checkbox" id="edit-n-pinned" ${n.pinned ? 'checked' : ''} style="accent-color:var(--c-blue-base)">
+      <label for="edit-n-pinned" style="font-size:14px;font-weight:500;cursor:pointer">상단 고정</label>
+    </div>
+    <div style="display:flex;gap:var(--space-2)">
+      <button class="btn-primary" onclick="submitNoticeEdit(${noticeId})" style="background:var(--c-blue-base);flex:1">저장</button>
+      <button class="btn-primary" onclick="deleteNotice(${noticeId})" style="background:var(--c-red-base);flex:1">삭제</button>
+    </div>
+  `);
+}
+
+function submitNoticeEdit(id) {
+  if (!requireLeader()) return;
+  const title = document.getElementById('edit-n-title').value.trim();
+  if (!title) { showToast('제목을 입력하세요'); return; }
+  notices = notices.map(n => n.id === id ? {
+    ...n,
+    type: document.getElementById('edit-n-type').value,
+    title,
+    content: document.getElementById('edit-n-content').value.trim() || '내용 없음',
+    pinned: document.getElementById('edit-n-pinned').checked,
+  } : n);
+  saveAppState();
+  closeModal();
+  renderNotices();
+  renderHome();
+  showToast('공지를 수정했습니다');
+}
+
+function deleteNotice(id) {
+  if (!requireLeader()) return;
+  const notice = notices.find(n => n.id === id);
+  if (notice?.type === 'competition') {
+    hiddenCompetitionNoticeIds = [...new Set([...hiddenCompetitionNoticeIds, id])];
+  }
+  notices = notices.filter(n => n.id !== id);
+  saveAppState();
+  closeModal();
+  renderNotices();
+  renderHome();
+  showToast('공지를 삭제했습니다');
+}
+
+function openAddTask() {
+  if (!requireLeader()) return;
+  const m = MEMBERS.find(x => x.id === activeMember);
+  showModal(`
+    <div class="modal-title">할 일 추가</div>
+    <div style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3);background:var(--c-bg);border-radius:var(--radius-md);margin-bottom:var(--space-5)">
+      <div class="member-av" style="background:${m.color}">${m.short}</div>
+      <div>
+        <div style="font-weight:600">${m.name}</div>
+        <div style="font-size:13px;color:var(--c-text-muted)">${m.instrument}${m.id === LEADER_ID ? ' · 리더' : ''}</div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">할 일</label>
+      <input class="form-input" id="t-title" placeholder="할 일을 입력하세요" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">기한</label>
+      <input class="form-input" id="t-dl" placeholder="예: 10.30" />
+    </div>
+    <button class="btn-primary" onclick="submitTask()">추가하기</button>
+  `);
+}
+
+function submitTask() {
+  if (!requireLeader()) return;
+  const title = document.getElementById('t-title').value.trim();
+  if (!title) { showToast('할 일을 입력하세요'); return; }
+  tasks.push({ id: Date.now(), mid: activeMember, title, dl: document.getElementById('t-dl').value.trim() || '-', done: false });
+  saveAppState();
+  closeModal();
+  renderTaskList();
+  renderHome();
+  showToast('할 일이 추가되었습니다');
+}
+
+// ═══════════════ SONGS: add song ═══════════════
+function openAddSong() {
+  if (!requireLeader()) return;
+  showModal(`
+    <div class="modal-title">곡 추가</div>
+    <div class="form-group">
+      <label class="form-label">곡 제목</label>
+      <input class="form-input" id="s-title" placeholder="곡 제목 입력" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">아티스트</label>
+      <input class="form-input" id="s-artist" placeholder="아티스트명 입력" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">MP3 파일</label>
+      <input class="form-input" id="s-mp3-file" type="file" accept="audio/*" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">리드시트 파일</label>
+      <input class="form-input" id="s-sheet-file" type="file" accept=".pdf,.png,.jpg,.jpeg" />
+    </div>
+    <button class="btn-primary" onclick="submitSong()">곡 추가</button>
+  `);
+}
+
+function submitSong() {
+  if (!requireLeader()) return;
+  const title = document.getElementById('s-title').value.trim();
+  if (!title) { showToast('곡 제목을 입력하세요'); return; }
+  SONGS.push({
+    id: Date.now(),
+    title,
+    artist: document.getElementById('s-artist').value.trim() || '알 수 없음',
+    mp3: document.getElementById('s-mp3-file').files.length > 0,
+    sheet: document.getElementById('s-sheet-file').files.length > 0,
+    mp3Name: document.getElementById('s-mp3-file').files[0]?.name || '',
+    sheetName: document.getElementById('s-sheet-file').files[0]?.name || '',
+  });
+  saveAppState();
+  closeModal();
+  renderSongs();
+  renderHome();
+  showToast('곡이 추가되었습니다');
+}
+
+function openEditSong(songId) {
+  if (!requireLeader()) return;
+  const song = SONGS.find(s => s.id === songId);
+  if (!song) return;
+  showModal(`
+    <div class="modal-title">곡 자료 수정</div>
+    <div style="padding:var(--space-3);background:var(--c-bg);border-radius:var(--radius-md);margin-bottom:var(--space-5)">
+      <div style="font-weight:700">${song.title}</div>
+      <div style="font-size:13px;color:var(--c-text-muted);margin-top:2px">${song.artist || '아티스트 미입력'}</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">MP3 상태</label>
+      <select class="form-select" id="edit-mp3-state">
+        <option value="keep" ${song.mp3?'selected':''}>현재 상태 유지${song.mp3 ? ` · ${song.mp3Name || 'MP3 있음'}` : ' · 없음'}</option>
+        <option value="remove">MP3 제거</option>
+        <option value="add">새 MP3 넣기</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">새 MP3 파일</label>
+      <input class="form-input" id="edit-mp3-file" type="file" accept="audio/*" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">악보 상태</label>
+      <select class="form-select" id="edit-sheet-state">
+        <option value="keep" ${song.sheet?'selected':''}>현재 상태 유지${song.sheet ? ` · ${song.sheetName || '악보 있음'}` : ' · 없음'}</option>
+        <option value="remove">악보 제거</option>
+        <option value="add">새 악보 넣기</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">새 리드시트 파일</label>
+      <input class="form-input" id="edit-sheet-file" type="file" accept=".pdf,.png,.jpg,.jpeg" />
+    </div>
+    <button class="btn-primary" onclick="saveSongFiles(${song.id})">저장</button>
+  `);
+}
+
+function saveSongFiles(songId) {
+  if (!requireLeader()) return;
+  const song = SONGS.find(s => s.id === songId);
+  if (!song) return;
+  const mp3State = document.getElementById('edit-mp3-state').value;
+  const sheetState = document.getElementById('edit-sheet-state').value;
+  const mp3File = document.getElementById('edit-mp3-file').files[0];
+  const sheetFile = document.getElementById('edit-sheet-file').files[0];
+
+  if (mp3State === 'remove') {
+    song.mp3 = false;
+    song.mp3Name = '';
+  }
+  if (mp3State === 'add') {
+    song.mp3 = true;
+    song.mp3Name = mp3File?.name || 'MP3';
+  }
+  if (sheetState === 'remove') {
+    song.sheet = false;
+    song.sheetName = '';
+  }
+  if (sheetState === 'add') {
+    song.sheet = true;
+    song.sheetName = sheetFile?.name || '악보';
+  }
+
+  saveAppState();
+  closeModal();
+  renderSongs();
+  renderHome();
+  showToast('곡 자료를 수정했습니다');
+}
+
+// ═══════════════ INIT ═══════════════
+initTheme();
+loadAppState();
+registerServiceWorker();
+initLogin();
+initCloudSync();
+</script>
+</body>
+</html>
