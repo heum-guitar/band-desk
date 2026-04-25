@@ -1,4 +1,4 @@
-const CACHE_NAME = "band-desk-pwa-v4";
+const CACHE_NAME = "band-desk-pwa-v5";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -25,11 +25,15 @@ self.addEventListener("activate", event => {
   );
 });
 
+self.addEventListener("message", event => {
+  if (event.data?.type === "SKIP_WAITING") self.skipWaiting();
+});
+
 self.addEventListener("fetch", event => {
   if (event.request.method !== "GET") return;
   if (event.request.mode === "navigate") {
     event.respondWith(
-      fetch(event.request).then(response => {
+      fetch(new Request(event.request, { cache: "reload" })).then(response => {
         const copy = response.clone();
         caches.open(CACHE_NAME).then(cache => cache.put("./index.html", copy));
         return response;

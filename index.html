@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="theme-color" content="#20233F">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -888,9 +891,11 @@ let audioTimer = null;
 let audioSec = 0;
 let songsTabActive = 'library';
 let hiddenCompetitionNoticeIds = [];
+let refreshingForUpdate = false;
 const LOGIN_KEY = 'bandDeskCurrentUserId';
 const APP_STATE_KEY = 'bandDeskAppStateV1';
 const THEME_KEY = 'bandDeskTheme';
+const APP_BUILD = '2026-04-25-05';
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyDlG00JPma_ThM2omg5WAfYMUavd6F5xVk",
   authDomain: "heum-band.firebaseapp.com",
@@ -1293,7 +1298,27 @@ function requestAppNotification() {
 async function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return null;
   try {
-    return await navigator.serviceWorker.register('./service-worker.js');
+    const registration = await navigator.serviceWorker.register(`./service-worker.js?v=${APP_BUILD}`);
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (refreshingForUpdate) return;
+      refreshingForUpdate = true;
+      window.location.reload();
+    });
+    registration.addEventListener('updatefound', () => {
+      const worker = registration.installing;
+      if (!worker) return;
+      worker.addEventListener('statechange', () => {
+        if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+          worker.postMessage({ type: 'SKIP_WAITING' });
+        }
+      });
+    });
+    if (registration.waiting) {
+      registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+    }
+    setInterval(() => registration.update(), 60 * 60 * 1000);
+    registration.update();
+    return registration;
   } catch {
     showToast('앱 설치 준비를 완료하지 못했습니다');
     return null;
