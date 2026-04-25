@@ -1208,10 +1208,12 @@ function applyRemotePayload(remoteData) {
   const remoteStateJson = JSON.stringify(remoteState);
   const remoteSavedAt = Number(remoteData.savedAt || 0);
   const remoteSavedByThisClient = remoteData.clientId === cloudClientId;
-  if (remoteSavedAt && remoteSavedAt < lastAppliedRemoteSavedAt) return;
-  if (remoteSavedByThisClient && remoteSavedAt && lastLocalSavedAt && remoteSavedAt < lastLocalSavedAt) {
-    queueCloudSave(getAppState());
-    return;
+  if (remoteSavedByThisClient) {
+    if (remoteSavedAt && remoteSavedAt < lastAppliedRemoteSavedAt) return;
+    if (remoteSavedAt && lastLocalSavedAt && remoteSavedAt < lastLocalSavedAt) {
+      queueCloudSave(getAppState());
+      return;
+    }
   }
   applyingRemoteState = true;
   applyAppState(remoteState, { mergeDefaults: false });
