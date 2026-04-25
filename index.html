@@ -902,7 +902,7 @@ let refreshingForUpdate = false;
 const LOGIN_KEY = 'bandDeskCurrentUserId';
 const APP_STATE_KEY = 'bandDeskAppStateV1';
 const THEME_KEY = 'bandDeskTheme';
-const APP_BUILD = '2026-04-26-16';
+const APP_BUILD = '2026-04-26-17';
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyDlG00JPma_ThM2omg5WAfYMUavd6F5xVk",
   authDomain: "heum-band.firebaseapp.com",
@@ -1044,8 +1044,8 @@ function getAppState() {
 }
 
 function makeCloudPayload(state = getAppState()) {
-  const savedAt = lastLocalSavedAt || Date.now();
-  lastLocalSavedAt = Math.max(lastLocalSavedAt, savedAt);
+  const savedAt = Date.now();
+  lastLocalSavedAt = savedAt;
   return {
     state,
     savedAt,
@@ -1204,7 +1204,7 @@ function applyRemotePayload(remoteData) {
   const remoteState = remoteData?.state;
   if (!remoteState) return;
   const remoteSavedAt = Number(remoteData.savedAt || 0);
-  if ((cloudSavePending && lastLocalSavedAt) || (remoteSavedAt && remoteSavedAt < lastLocalSavedAt)) return;
+  if (remoteSavedAt && remoteSavedAt < lastAppliedRemoteSavedAt) return;
   applyingRemoteState = true;
   applyAppState(remoteState);
   syncCompetitionData();
@@ -1532,8 +1532,12 @@ function renderNotices() {
   updateLeaderControls();
 }
 
+function sameId(a, b) {
+  return String(a) === String(b);
+}
+
 function openNotice(id) {
-  const n = notices.find(x => x.id === id);
+  const n = notices.find(x => sameId(x.id, id));
   if (!n) return;
   const noticeId = JSON.stringify(id);
   const tc = { schedule:'blue', general:'muted', competition:'orange' };
@@ -2453,7 +2457,7 @@ function submitNotice() {
 
 function openEditNotice(id) {
   if (!requireLeader()) return;
-  const n = notices.find(x => x.id === id);
+  const n = notices.find(x => sameId(x.id, id));
   if (!n) return;
   const noticeId = JSON.stringify(id);
   showModal(`
@@ -2489,13 +2493,22 @@ function submitNoticeEdit(id) {
   if (!requireLeader()) return;
   const title = document.getElementById('edit-n-title').value.trim();
   if (!title) { showToast('제목을 입력하세요'); return; }
-  notices = notices.map(n => n.id === id ? {
+  let updated = false;
+  notices = notices.map(n => {
+    if (!sameId(n.id, id)) return n;
+    updated = true;
+    return {
     ...n,
     type: document.getElementById('edit-n-type').value,
     title,
     content: document.getElementById('edit-n-content').value.trim() || '내용 없음',
     pinned: document.getElementById('edit-n-pinned').checked,
-  } : n);
+    };
+  });
+  if (!updated) {
+    showToast('수정할 공지를 찾지 못했습니다');
+    return;
+  }
   saveAppState();
   closeModal();
   renderNotices();
@@ -2505,11 +2518,11 @@ function submitNoticeEdit(id) {
 
 function deleteNotice(id) {
   if (!requireLeader()) return;
-  const notice = notices.find(n => n.id === id);
+  const notice = notices.find(n => sameId(n.id, id));
   if (notice?.type === 'competition') {
     hiddenCompetitionNoticeIds = [...new Set([...hiddenCompetitionNoticeIds, id])];
   }
-  notices = notices.filter(n => n.id !== id);
+  notices = notices.filter(n => !sameId(n.id, id));
   saveAppState();
   closeModal();
   renderNotices();
