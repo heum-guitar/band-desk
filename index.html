@@ -15,8 +15,7 @@
 <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="./icons/icon.svg">
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
@@ -903,19 +902,18 @@ let refreshingForUpdate = false;
 const LOGIN_KEY = 'bandDeskCurrentUserId';
 const APP_STATE_KEY = 'bandDeskAppStateV1';
 const THEME_KEY = 'bandDeskTheme';
-const APP_BUILD = '2026-04-26-15';
+const APP_BUILD = '2026-04-26-16';
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyDlG00JPma_ThM2omg5WAfYMUavd6F5xVk",
   authDomain: "heum-band.firebaseapp.com",
+  databaseURL: "https://heum-band-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "heum-band",
   storageBucket: "heum-band.firebasestorage.app",
   messagingSenderId: "122572059146",
   appId: "1:122572059146:web:8b134b9a4a4a952eb425f3"
 };
-const CLOUD_STATE_COLLECTION = 'bandDesk';
-const CLOUD_STATE_DOC = 'sharedState';
 let cloudDb = null;
-let cloudDocRef = null;
+let cloudStateRef = null;
 let cloudSaveTimer = null;
 let applyingRemoteState = false;
 let cloudConnectedOnce = false;
@@ -1052,7 +1050,7 @@ function makeCloudPayload(state = getAppState()) {
     state,
     savedAt,
     appBuild: APP_BUILD,
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAt: new Date(savedAt).toISOString(),
   };
 }
 
@@ -1144,11 +1142,11 @@ function refreshVisibleData() {
 function queueCloudSave(state = getAppState()) {
   if (applyingRemoteState) return;
   cloudSavePending = true;
-  if (!cloudDocRef || !cloudReady) return;
+  if (!cloudStateRef || !cloudReady) return;
   clearTimeout(cloudSaveTimer);
   cloudSaveTimer = setTimeout(() => {
     cloudSavePending = false;
-    cloudDocRef.set(makeCloudPayload(state), { merge: true })
+    cloudStateRef.set(makeCloudPayload(state))
       .then(() => {
         if (cloudConnectedOnce) showToast('공유 저장 완료');
       })
@@ -1167,36 +1165,31 @@ async function initCloudSync() {
   }
   try {
     if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
-    if (firebase.auth) {
-      await firebase.auth().signInAnonymously().catch(error => {
-        console.warn('Anonymous auth failed:', error);
-      });
-    }
-    cloudDb = firebase.firestore();
-    cloudDocRef = cloudDb.collection(CLOUD_STATE_COLLECTION).doc(CLOUD_STATE_DOC);
+    cloudDb = firebase.database();
+    cloudStateRef = cloudDb.ref('bandDesk/sharedState');
     cloudReady = true;
-    if (cloudSavePending) queueCloudSave(getAppState());
-    cloudDocRef.onSnapshot(snapshot => {
-      if (!snapshot.exists) {
+
+    try {
+      const firstSnapshot = await Promise.race([
+        cloudStateRef.get(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000)),
+      ]);
+      if (firstSnapshot.exists()) {
+        applyRemotePayload(firstSnapshot.val());
+      } else {
+        queueCloudSave(getAppState());
+      }
+    } catch (error) {
+      console.warn('Initial realtime load failed:', error);
+      if (cloudSavePending) queueCloudSave(getAppState());
+    }
+
+    cloudStateRef.on('value', snapshot => {
+      if (!snapshot.exists()) {
         queueCloudSave(getAppState());
         return;
       }
-      const remoteData = snapshot.data() || {};
-      const remoteState = remoteData.state;
-      if (!remoteState) return;
-      const remoteSavedAt = Number(remoteData.savedAt || 0);
-      if ((cloudSavePending && lastLocalSavedAt) || (remoteSavedAt && remoteSavedAt < lastLocalSavedAt)) return;
-      applyingRemoteState = true;
-      applyAppState(remoteState);
-      syncCompetitionData();
-      localStorage.setItem(APP_STATE_KEY, JSON.stringify(getAppState()));
-      applyingRemoteState = false;
-      lastAppliedRemoteSavedAt = Math.max(lastAppliedRemoteSavedAt, remoteSavedAt);
-      refreshVisibleData();
-      if (!cloudConnectedOnce) {
-        cloudConnectedOnce = true;
-        showToast('공유 데이터에 연결됐습니다');
-      }
+      applyRemotePayload(snapshot.val());
     }, error => {
       console.error('Cloud sync failed:', error);
       showToast(`공유 연결 실패: ${error.code || '권한/네트워크 확인'}`);
@@ -1204,6 +1197,24 @@ async function initCloudSync() {
   } catch (error) {
     console.error('Firebase init failed:', error);
     showToast(`Firebase 시작 실패: ${error.code || '설정 확인'}`);
+  }
+}
+
+function applyRemotePayload(remoteData) {
+  const remoteState = remoteData?.state;
+  if (!remoteState) return;
+  const remoteSavedAt = Number(remoteData.savedAt || 0);
+  if ((cloudSavePending && lastLocalSavedAt) || (remoteSavedAt && remoteSavedAt < lastLocalSavedAt)) return;
+  applyingRemoteState = true;
+  applyAppState(remoteState);
+  syncCompetitionData();
+  localStorage.setItem(APP_STATE_KEY, JSON.stringify(getAppState()));
+  applyingRemoteState = false;
+  lastAppliedRemoteSavedAt = Math.max(lastAppliedRemoteSavedAt, remoteSavedAt);
+  refreshVisibleData();
+  if (!cloudConnectedOnce) {
+    cloudConnectedOnce = true;
+    showToast('공유 데이터에 연결됐습니다');
   }
 }
 
