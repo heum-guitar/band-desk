@@ -1056,8 +1056,7 @@ function mergeNoticeLists(savedNotices) {
 }
 
 function removeDefaultNotices(items) {
-  return removeSampleCompetitionNotices(items)
-    .filter(item => !DEFAULT_NOTICE_TITLES.has(String(item?.title || '').trim()));
+  return removeSampleCompetitionNotices(items);
 }
 
 function isSampleCompetitionTitle(value) {
@@ -1159,10 +1158,10 @@ function queueCloudSave(state = getAppState()) {
         cloudSavePending = true;
         showToast(`공유 저장 실패: ${error.code || '연결 확인'}`);
       });
-  }, 0);
+  }, 800);
 }
 
-async function initCloudSync() {
+function initCloudSync() {
   if (!window.firebase) {
     showToast('Firebase 스크립트를 불러오지 못했습니다');
     return;
@@ -1173,23 +1172,10 @@ async function initCloudSync() {
     cloudStateRef = cloudDb.ref('bandDesk/sharedState');
     cloudReady = true;
 
-    try {
-      const firstSnapshot = await Promise.race([
-        cloudStateRef.get(),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000)),
-      ]);
-      if (firstSnapshot.exists()) {
-        applyRemotePayload(firstSnapshot.val());
-      } else {
-        queueCloudSave(getAppState());
-      }
-    } catch (error) {
-      console.warn('Initial realtime load failed:', error);
-      if (cloudSavePending) queueCloudSave(getAppState());
-    }
-
+    // on('value')는 연결 즉시 현재 값을 발생시키고, 이후 변경사항도 실시간으로 수신함
     cloudStateRef.on('value', snapshot => {
       if (!snapshot.exists()) {
+        // Firebase가 비어있으면 로컬 상태를 업로드
         queueCloudSave(getAppState());
         return;
       }
@@ -1208,25 +1194,26 @@ function applyRemotePayload(remoteData) {
   const remoteState = remoteData?.state;
   if (!remoteState) return;
   purgeSeedData(remoteState);
-  const remoteStateJson = JSON.stringify(remoteState);
   const remoteSavedAt = Number(remoteData.savedAt || 0);
   const remoteSavedByThisClient = remoteData.clientId === cloudClientId;
-  if (remoteSavedByThisClient) {
-    if (remoteSavedAt && remoteSavedAt < lastAppliedRemoteSavedAt) return;
-    if (remoteSavedAt && lastLocalSavedAt && remoteSavedAt < lastLocalSavedAt) {
-      queueCloudSave(getAppState());
-      return;
-    }
+
+  // 이 클라이언트가 저장한 데이터인데 로컬에 더 최신 변경사항이 있으면
+  // Firebase를 최신 로컬 상태로 덮어쓰고 적용을 건너뜀
+  if (remoteSavedByThisClient && remoteSavedAt && lastLocalSavedAt > remoteSavedAt) {
+    queueCloudSave(getAppState());
+    return;
   }
+
+  // 이미 이 타임스탬프 이후 데이터를 적용했으면 중복 처리 방지
+  if (remoteSavedAt && remoteSavedAt <= lastAppliedRemoteSavedAt && cloudConnectedOnce) return;
+
   applyingRemoteState = true;
   applyAppState(remoteState, { mergeDefaults: false });
   syncCompetitionData();
-  const cleanedState = getAppState();
-  const cleanedStateJson = JSON.stringify(cleanedState);
+  const cleanedStateJson = JSON.stringify(getAppState());
   localStorage.setItem(APP_STATE_KEY, cleanedStateJson);
   applyingRemoteState = false;
   lastAppliedRemoteSavedAt = Math.max(lastAppliedRemoteSavedAt, remoteSavedAt);
-  if (cleanedStateJson !== remoteStateJson) queueCloudSave(cleanedState);
   refreshVisibleData();
   if (!cloudConnectedOnce) {
     cloudConnectedOnce = true;
