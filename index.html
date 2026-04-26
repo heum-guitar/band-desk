@@ -1002,6 +1002,9 @@ function escapeHtml(value) {
 function applyTheme(theme) {
   document.body.classList.toggle('dark-mode', theme === 'dark');
   localStorage.setItem(THEME_KEY, theme);
+  // iOS Safari CSS 변수 즉시 반영을 위한 강제 리페인트
+  document.body.style.opacity = '0.99';
+  requestAnimationFrame(() => { document.body.style.opacity = ''; });
 }
 
 function initTheme() {
@@ -1426,8 +1429,11 @@ function openSettings() {
 
 function setThemeFromSettings(theme) {
   applyTheme(theme);
-  closeModal();
-  openSettings();
+  // 모달을 껐다 켜지 않고 버튼 상태만 즉시 갱신
+  document.querySelectorAll('#modal-content .tab-btn').forEach(btn => {
+    const isLight = btn.textContent.trim() === '라이트';
+    btn.classList.toggle('active', theme === 'light' ? isLight : !isLight);
+  });
 }
 
 // ═══════════════ HOME ═══════════════
@@ -2080,6 +2086,19 @@ const MULE_COMPETITION_URLS = [
   'https://www.mule.co.kr/bbs/lesson/contest',
 ];
 const VERIFIED_COMPETITION_ITEMS = [
+  {
+    id: 'verified-penta-super-rookie-2026',
+    sourceType: 'verified',
+    status: 'open',
+    title: '2026 PENTA SUPER ROOKIE',
+    organizer: '인천펜타포트 음악축제 / 인천음악창작소',
+    date: '2026. 07. 31 ~ 08. 02',
+    deadline: '2026. 05. 01',
+    venue: '송도달빛축제공원',
+    prize: '총상금 1,800만원 / TOP 10 펜타포트 서드 스테이지 출연',
+    url: 'https://pentaport.co.kr/Notice/?bmode=view&idx=170773377',
+    desc: '신인 밴드·아티스트 대상 오픈콜입니다. 대상팀 해외 페스티벌 출연 기회와 상위 입상팀 음반 제작 지원이 제공됩니다.',
+  },
   {
     id: 'verified-after-work-rock-2026',
     sourceType: 'verified',
