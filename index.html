@@ -1195,25 +1195,20 @@ function applyRemotePayload(remoteData) {
   if (!remoteState) return;
   purgeSeedData(remoteState);
   const remoteSavedAt = Number(remoteData.savedAt || 0);
-  const remoteSavedByThisClient = remoteData.clientId === cloudClientId;
 
-  // 이 클라이언트가 저장한 데이터인데 로컬에 더 최신 변경사항이 있으면
-  // Firebase를 최신 로컬 상태로 덮어쓰고 적용을 건너뜀
-  if (remoteSavedByThisClient && remoteSavedAt && lastLocalSavedAt > remoteSavedAt) {
+  // 같은 기기에서 저장한 데이터가 돌아왔는데, 그 사이에 더 최신 변경이 생겼다면
+  // 최신 로컬 상태를 Firebase에 다시 올리고 오래된 반향(echo)은 무시
+  if (remoteData.clientId === cloudClientId && remoteSavedAt && lastLocalSavedAt > remoteSavedAt) {
     queueCloudSave(getAppState());
     return;
   }
 
-  // 이미 이 타임스탬프 이후 데이터를 적용했으면 중복 처리 방지
-  if (remoteSavedAt && remoteSavedAt <= lastAppliedRemoteSavedAt && cloudConnectedOnce) return;
-
   applyingRemoteState = true;
   applyAppState(remoteState, { mergeDefaults: false });
   syncCompetitionData();
-  const cleanedStateJson = JSON.stringify(getAppState());
-  localStorage.setItem(APP_STATE_KEY, cleanedStateJson);
+  localStorage.setItem(APP_STATE_KEY, JSON.stringify(getAppState()));
   applyingRemoteState = false;
-  lastAppliedRemoteSavedAt = Math.max(lastAppliedRemoteSavedAt, remoteSavedAt);
+  if (remoteSavedAt) lastAppliedRemoteSavedAt = Math.max(lastAppliedRemoteSavedAt, remoteSavedAt);
   refreshVisibleData();
   if (!cloudConnectedOnce) {
     cloudConnectedOnce = true;
