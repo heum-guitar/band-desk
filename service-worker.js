@@ -1,4 +1,4 @@
-const CACHE_NAME = "band-desk-pwa-v23";
+const CACHE_NAME = "band-desk-pwa-v24";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -31,6 +31,12 @@ self.addEventListener("message", event => {
 
 self.addEventListener("fetch", event => {
   if (event.request.method !== "GET") return;
+
+  const url = new URL(event.request.url);
+
+  // Firebase, CDN, 외부 요청은 서비스워커가 개입하지 않음 (캐시하면 실시간 동기화 깨짐)
+  if (url.origin !== self.location.origin) return;
+
   if (event.request.mode === "navigate") {
     event.respondWith(
       fetch(new Request(event.request, { cache: "reload" })).then(response => {
@@ -41,6 +47,8 @@ self.addEventListener("fetch", event => {
     );
     return;
   }
+
+  // 동일 출처 정적 파일만 캐시
   event.respondWith(
     caches.match(event.request).then(cached => {
       if (cached) return cached;

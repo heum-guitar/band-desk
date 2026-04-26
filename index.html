@@ -2718,6 +2718,15 @@ function saveSongFiles(songId) {
   showToast('곡 자료를 수정했습니다');
 }
 
+// 앱이 백그라운드에서 포그라운드로 돌아올 때 Firebase에서 최신 데이터 즉시 수신
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && cloudStateRef) {
+    cloudStateRef.get().then(snapshot => {
+      if (snapshot.exists()) applyRemotePayload(snapshot.val());
+    }).catch(() => {});
+  }
+});
+
 // ═══════════════ INIT ═══════════════
 initTheme();
 loadAppState();
