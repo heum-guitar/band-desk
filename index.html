@@ -590,6 +590,11 @@ svg { fill: currentColor; }
 }
 .login-btn:active { opacity: 0.85; }
 
+/* 홈 2컬럼 — 모바일에서는 단일 컬럼 */
+#page-home { display: flex; flex-direction: column; }
+.home-left-col { display: contents; }
+.home-right-col { display: contents; }
+
 /* ── Notice inline add form ── */
 #notice-add-panel {
   overflow: hidden;
@@ -601,7 +606,6 @@ svg { fill: currentColor; }
 /* ── Desktop / Tablet Sidebar ── */
 .desktop-sidebar { display: none; }
 .desktop-center-wrap { display: contents; }
-.desktop-right-panel { display: none; }
 .desktop-content-toolbar { display: none; }
 
 @media (min-width: 768px) {
@@ -731,39 +735,35 @@ svg { fill: currentColor; }
   #desktop-add-btn:active { opacity: 0.85; }
   #desktop-add-btn.visible { display: flex; }
 
-  /* ── Desktop Right Panel ── */
-  .desktop-right-panel {
+  /* page max-width */
+  .page { max-width: 860px; }
+
+  /* ── 홈 2컬럼 레이아웃 ── */
+  #page-home {
+    display: grid;
+    grid-template-columns: 1fr 260px;
+    grid-template-rows: auto;
+    align-items: start;
+    gap: var(--space-4);
+    max-width: 1100px;
+  }
+  .home-left-col {
     display: flex;
     flex-direction: column;
-    width: 260px;
-    min-width: 260px;
-    flex-shrink: 0;
+    gap: var(--space-4);
+    min-width: 0;
+  }
+  .home-right-col {
+    position: sticky;
+    top: 24px;
+  }
+  #home-tasks-section {
     background: var(--c-surface);
-    border-left: 1px solid var(--c-border);
-    padding: 20px 16px 24px;
-    height: 100%;
-    overflow-y: auto;
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    border: 1px solid var(--c-border);
+    box-shadow: 0 4px 12px rgba(26,26,58,0.03);
   }
-  .right-panel-title {
-    font-size: 16px;
-    font-weight: 800;
-    margin-bottom: 16px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid var(--c-border);
-  }
-  .right-panel-empty {
-    font-size: 13px;
-    color: var(--c-text-muted);
-    text-align: center;
-    padding: 24px 8px;
-    line-height: 1.6;
-  }
-
-  /* page max-width adjustment for right panel */
-  .page { max-width: 680px; }
-
-  /* 홈 할 일 섹션은 우측 패널로 이동되므로 숨김 */
-  #home-tasks-section { display: none; }
 }
 </style>
 </head>
@@ -856,6 +856,7 @@ svg { fill: currentColor; }
 
     <!-- ══════════ HOME ══════════ -->
     <div class="page active" id="page-home">
+    <div class="home-left-col">
 
       <div class="alert-banner" id="competition-alert" onclick="navigateTo('competition')">
         <div class="alert-icon">
@@ -923,7 +924,9 @@ svg { fill: currentColor; }
         </div>
       </div>
 
-      <!-- My tasks preview (모바일 전용 — 데스크탑은 우측 패널에 표시) -->
+    </div><!-- /home-left-col -->
+
+    <div class="home-right-col">
       <div id="home-tasks-section">
         <div class="section-header">
           <h2>내 할 일</h2>
@@ -931,6 +934,8 @@ svg { fill: currentColor; }
         </div>
         <div class="list-group" id="home-tasks"></div>
       </div>
+    </div><!-- /home-right-col -->
+
     </div>
 
     <!-- ══════════ NOTICE ══════════ -->
@@ -1036,18 +1041,6 @@ svg { fill: currentColor; }
   </main>
 
   </div><!-- /desktop-center-wrap -->
-
-  <!-- Desktop Right Panel -->
-  <aside class="desktop-right-panel" id="desktop-right-panel">
-    <div class="right-panel-title">내 할 일</div>
-    <div class="list-group" id="right-panel-tasks"></div>
-    <div id="right-panel-empty" class="right-panel-empty">
-      등록된 할 일이 없습니다
-    </div>
-    <div style="margin-top:auto;padding-top:16px">
-      <button class="btn-primary" style="font-size:13px;padding:10px" onclick="navigateTo('tasks')">할 일 전체 보기</button>
-    </div>
-  </aside>
 
   <!-- FAB -->
   <button class="fab" id="fab" onclick="handleFab()" style="display:none">
@@ -1700,7 +1693,6 @@ function renderHome() {
   document.getElementById('stat-setlist').textContent = setlist.length;
   document.getElementById('stat-done').textContent = tasks.filter(t => t.done).length;
   updateLeaderControls();
-  renderRightPanel();
 }
 
 function renderHomeCompetitionSummary() {
@@ -2732,27 +2724,6 @@ function submitNoticeInline() {
   showToast('공지가 등록되었습니다');
 }
 
-function renderRightPanel() {
-  const panel = document.getElementById('right-panel-tasks');
-  const empty = document.getElementById('right-panel-empty');
-  if (!panel) return;
-  const myT = currentUserId ? tasks.filter(t => t.mid === currentUserId) : [];
-  if (!myT.length) {
-    panel.innerHTML = '';
-    if (empty) empty.style.display = 'block';
-    return;
-  }
-  if (empty) empty.style.display = 'none';
-  panel.innerHTML = myT.map(t => `
-    <div class="list-item surface task-item ${t.done ? 'done' : ''}" id="rpt-${t.id}">
-      <div class="task-checkbox" onclick="toggleTask(${t.id})">${t.done ? I.check : ''}</div>
-      <div class="item-content">
-        <div class="item-title">${t.title}</div>
-        <div class="item-sub text-mono">기한: ${t.dl}</div>
-      </div>
-    </div>
-  `).join('');
-}
 
 function openAddNotice() {
   if (!requireLeader()) return;
