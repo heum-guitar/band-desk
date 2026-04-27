@@ -741,11 +741,11 @@ svg { fill: currentColor; }
   /* ── 홈 2컬럼 레이아웃 ── */
   #page-home.active {
     display: grid;
-    grid-template-columns: 1fr 340px;
+    grid-template-columns: 3fr 2fr;
     grid-template-rows: auto;
     align-items: start;
     gap: var(--space-4);
-    max-width: 1440px;
+    max-width: none;
   }
   .home-left-col {
     display: flex;
@@ -763,6 +763,24 @@ svg { fill: currentColor; }
     padding: var(--space-4);
     border: 1px solid var(--c-border);
     box-shadow: 0 4px 12px rgba(26,26,58,0.03);
+  }
+
+  /* ── 곡 관리 2컬럼 레이아웃 ── */
+  #page-songs.active {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: var(--space-4);
+    max-width: none;
+  }
+  #page-songs > .tab-bar {
+    display: none;
+  }
+  #songs-library,
+  #songs-setlist {
+    display: block !important;
+    flex: 1 1 0;
+    min-width: 0;
   }
 }
 </style>
@@ -978,7 +996,12 @@ svg { fill: currentColor; }
         <button class="tab-btn active" id="tab-library" onclick="switchSongsTab('library')">전체 라이브러리</button>
         <button class="tab-btn" id="tab-setlist" onclick="switchSongsTab('setlist')">이번 주 합주</button>
       </div>
-      <div id="songs-library"><div class="list-group" id="library-list"></div></div>
+      <div id="songs-library">
+        <div class="section-header">
+          <h2>전체 라이브러리</h2>
+        </div>
+        <div class="list-group" id="library-list"></div>
+      </div>
       <div id="songs-setlist" style="display:none">
         <div class="card" style="background:var(--c-blue-pale);border-color:rgba(91,92,226,.14);margin-bottom:var(--space-4)" id="setlist-event-card">
           <div style="font-weight:600;color:var(--c-blue-base);margin-bottom:4px">합주 일자</div>
@@ -1787,7 +1810,7 @@ function openNotice(id) {
   showModal(`
     <div style="margin-bottom:var(--space-3)"><span class="tag ${tc[n.type]}">${tl[n.type]}</span></div>
     <div class="modal-title">${n.title}</div>
-    <div style="font-size:14px;line-height:1.75;color:var(--c-text-muted);margin-bottom:var(--space-5)">${n.content}</div>
+    <div style="font-size:14px;line-height:1.75;color:var(--c-text-muted);margin-bottom:var(--space-5);white-space:pre-wrap;overflow-wrap:anywhere">${n.content}</div>
     <div style="display:flex;gap:var(--space-4);font-size:13px;color:var(--c-text-muted);border-top:1px solid var(--c-border);padding-top:var(--space-4)">
       <span>작성자: ${n.author}</span><span>${n.date}</span>
     </div>
