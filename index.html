@@ -587,10 +587,162 @@ svg { fill: currentColor; }
   cursor: pointer; transition: opacity 0.15s;
 }
 .login-btn:active { opacity: 0.85; }
+
+/* ── Desktop / Tablet Sidebar ── */
+.desktop-sidebar { display: none; }
+
+@media (min-width: 768px) {
+  html, body { overflow: auto; height: auto; }
+  body { display: flex; align-items: stretch; min-height: 100vh; min-height: 100dvh; }
+
+  .app-container {
+    max-width: 100%;
+    flex-direction: row;
+    height: auto;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+
+  .desktop-sidebar {
+    display: flex;
+    flex-direction: column;
+    width: 220px;
+    min-width: 220px;
+    flex-shrink: 0;
+    background: var(--c-surface);
+    border-right: 1px solid var(--c-border);
+    padding: 20px 12px 24px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    height: 100dvh;
+    overflow-y: auto;
+    z-index: 10;
+  }
+
+  .sidebar-brand {
+    display: flex; align-items: center; gap: 10px;
+    padding: 4px 8px 20px;
+    border-bottom: 1px solid var(--c-border);
+    margin-bottom: 12px;
+  }
+  .sidebar-brand-name { font-size: 16px; font-weight: 800; letter-spacing: -0.4px; }
+  .sidebar-user-chip {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 10px; border-radius: var(--radius-md);
+    background: var(--c-bg); margin-bottom: 16px;
+    font-size: 13px; font-weight: 600;
+  }
+
+  .sidebar-nav { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+  .snav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-radius: var(--radius-md);
+    font-size: 14px; font-weight: 600;
+    color: var(--c-text-muted); cursor: pointer;
+    background: none; border: none; text-align: left; width: 100%;
+    transition: background 0.12s, color 0.12s;
+  }
+  .snav-item:hover { background: var(--c-bg); color: var(--c-text-main); }
+  .snav-item.active { background: var(--c-blue-pale); color: var(--c-blue-base); }
+  .snav-item svg { flex-shrink: 0; }
+
+  .sidebar-footer {
+    padding-top: 12px;
+    border-top: 1px solid var(--c-border);
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .sidebar-footer-btn {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px; border-radius: var(--radius-md);
+    font-size: 13px; font-weight: 600;
+    color: var(--c-text-muted); cursor: pointer;
+    background: none; border: none; text-align: left; width: 100%;
+  }
+  .sidebar-footer-btn:hover { background: var(--c-bg); color: var(--c-text-main); }
+
+  .app-header { display: none; }
+  .bottom-nav { display: none !important; }
+  .fab { display: none !important; }
+
+  .main-content { flex: 1; overflow-y: auto; position: relative; }
+
+  .page {
+    padding: 24px 28px 40px;
+    max-width: 860px;
+    position: relative;
+    display: none;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+  .page.active { display: flex; }
+
+  /* 데스크탑 페이지 상단 타이틀 */
+  .desktop-page-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 4px;
+  }
+  .desktop-page-header h1 { font-size: 24px; font-weight: 800; }
+
+  /* 사이드바 FAB 대체 버튼 */
+  .sidebar-add-btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; padding: 10px;
+    background: var(--c-blue-dark); color: white;
+    border: none; border-radius: var(--radius-md);
+    font-size: 14px; font-weight: 700; cursor: pointer;
+    margin-bottom: 12px; transition: opacity 0.15s;
+  }
+  .sidebar-add-btn:active { opacity: 0.85; }
+  .sidebar-add-btn:disabled { background: var(--c-text-muted); cursor: not-allowed; }
+}
 </style>
 </head>
 <body>
 <div class="app-container">
+
+  <!-- Desktop Sidebar -->
+  <aside class="desktop-sidebar" id="desktop-sidebar">
+    <div class="sidebar-brand">
+      <div class="band-avatar">B</div>
+      <span class="sidebar-brand-name">Band Desk</span>
+    </div>
+    <div class="sidebar-user-chip" id="sidebar-user-chip" style="display:none">
+      <div id="sidebar-user-av" style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;color:white;flex-shrink:0"></div>
+      <span id="sidebar-user-name" style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+    </div>
+    <button class="sidebar-add-btn" id="sidebar-add-btn" style="display:none" onclick="handleFab()">
+      <svg width="16" height="16" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+      추가
+    </button>
+    <nav class="sidebar-nav">
+      <button class="snav-item active" id="snav-home" onclick="navigateTo('home')">
+        <svg width="18" height="18" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>홈
+      </button>
+      <button class="snav-item" id="snav-notice" onclick="navigateTo('notice')">
+        <svg width="18" height="18" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg>공지
+      </button>
+      <button class="snav-item" id="snav-songs" onclick="navigateTo('songs')">
+        <svg width="18" height="18" viewBox="0 0 24 24"><path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 5h-3v5.5c0 1.38-1.12 2.5-2.5 2.5S10 13.88 10 12.5s1.12-2.5 2.5-2.5c.57 0 1.08.19 1.5.51V5h4v2zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6z"/></svg>곡 관리
+      </button>
+      <button class="snav-item" id="snav-tasks" onclick="navigateTo('tasks')">
+        <svg width="18" height="18" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>할 일
+      </button>
+      <button class="snav-item" id="snav-calendar" onclick="navigateTo('calendar')">
+        <svg width="18" height="18" viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>달력
+      </button>
+      <button class="snav-item" id="snav-competition" onclick="navigateTo('competition')">
+        <svg width="18" height="18" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>대회 정보
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="sidebar-footer-btn" onclick="openSettings()">
+        <svg width="16" height="16" viewBox="0 0 24 24"><path d="M19.43 12.98c.04-.32.07-.65.07-.98s-.02-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.37-.31-.6-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98L14.5 2.42C14.47 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.5.42L9.12 5.07c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.08-.48 0-.6.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.08.65-.08.98s.03.66.08.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.37.31.6.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.04.24.25.42.5.42h4c.25 0 .47-.18.5-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.08.48 0 .6-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65z"/></svg>
+        환경설정
+      </button>
+    </div>
+  </aside>
 
   <!-- Login Screen -->
   <div id="login-screen">
@@ -826,33 +978,13 @@ const MEMBERS = [
 ];
 const LEADER_ID = 'jinheum';
 
-const SONGS = [
-  { id:1, title:'널', artist:'Binge watch', mp3:false, sheet:false },
-  { id:2, title:'나 좀 서운해', artist:'Binge watch', mp3:false, sheet:false },
-  { id:3, title:'비가 온 날', artist:'Binge watch', mp3:false, sheet:false },
-  { id:4, title:'도쿄플래시', artist:'', mp3:false, sheet:false },
-  { id:5, title:'I wanna live with you', artist:'Binge watch', mp3:false, sheet:false },
-  { id:6, title:'Sayonara baby', artist:'Fujii Kaze', mp3:false, sheet:false },
-  { id:7, title:'What time is it !', artist:'Binge watch', mp3:false, sheet:false },
-  { id:8, title:'거울', artist:'Binge watch', mp3:false, sheet:false },
-];
+const SONGS = [];
 
 let setlist = [];
 
 let notices = [];
 
 const COMPETITIONS = [];
-const DEFAULT_NOTICE_TITLES = new Set([
-  '10월 정기 합주 안내',
-  'Hysteria 악보 구합니다',
-]);
-const SAMPLE_COMPETITION_TITLES = [
-  '제4회 울산 중구 전국거리음악대회',
-  '2026 제5회 광주버스킹월드컵',
-  '2026 직장인 밴드 경연대회 퇴근 후 락',
-  '2026 퇴근 후 락 樂',
-  '전국 청소년 밴드 챔피언십',
-];
 
 let tasks = [];
 
@@ -874,7 +1006,7 @@ let songsTabActive = 'library';
 let hiddenCompetitionNoticeIds = [];
 let refreshingForUpdate = false;
 const LOGIN_KEY = 'bandDeskCurrentUserId';
-const APP_STATE_KEY = 'bandDeskAppStateV1';
+const APP_STATE_KEY = 'bandDeskAppStateV2';
 const THEME_KEY = 'bandDeskTheme';
 const APP_BUILD = '2026-04-26-19';
 const FIREBASE_CONFIG = {
@@ -940,7 +1072,7 @@ function competitionNotice(competition) {
 }
 
 function isCoverSong(song) {
-  return String(song.artist || '').trim().toLowerCase() !== 'binge watch';
+  return song.cover === true;
 }
 
 function syncCompetitionData() {
@@ -1047,31 +1179,14 @@ function persistLocalAppState(state = getAppState()) {
   localStorage.setItem(APP_STATE_KEY, JSON.stringify(state));
 }
 
-function mergeCompetitionLists(savedCompetitions) {
-  return removeSampleCompetitions(savedCompetitions);
-}
-
-function mergeNoticeLists(savedNotices) {
-  return removeDefaultNotices(savedNotices);
-}
-
-function removeDefaultNotices(items) {
-  return removeSampleCompetitionNotices(items);
-}
-
-function isSampleCompetitionTitle(value) {
-  return SAMPLE_COMPETITION_TITLES.some(title => String(value || '').includes(title));
-}
-
 function removeSampleCompetitions(items) {
   return (items || [])
-    .filter(item => item.sourceType === 'verified' || !isSampleCompetitionTitle(item.title))
     .filter(item => !isOutdatedSearchCompetition(item))
     .filter(item => !hasOnlyPastYear(item.title));
 }
 
 function removeSampleCompetitionNotices(items) {
-  return (items || []).filter(item => !(item.type === 'competition' && isSampleCompetitionTitle(item.title)));
+  return (items || []);
 }
 
 function isOutdatedSearchCompetition(item) {
@@ -1084,13 +1199,12 @@ function isOutdatedSearchCompetition(item) {
   return publishedAt < cutoff;
 }
 
-function applyAppState(state, { mergeDefaults = true } = {}) {
+function applyAppState(state) {
   if (Array.isArray(state.songs)) SONGS.splice(0, SONGS.length, ...state.songs);
   if (Array.isArray(state.setlist)) setlist = state.setlist;
-  if (Array.isArray(state.notices)) notices = mergeDefaults ? mergeNoticeLists(state.notices) : removeDefaultNotices(state.notices);
+  if (Array.isArray(state.notices)) notices = state.notices;
   if (Array.isArray(state.competitions)) {
-    const nextCompetitions = mergeDefaults ? mergeCompetitionLists(state.competitions) : removeSampleCompetitions(state.competitions);
-    COMPETITIONS.splice(0, COMPETITIONS.length, ...nextCompetitions);
+    COMPETITIONS.splice(0, COMPETITIONS.length, ...removeSampleCompetitions(state.competitions));
   }
   if (Array.isArray(state.hiddenCompetitionNoticeIds)) hiddenCompetitionNoticeIds = state.hiddenCompetitionNoticeIds;
   if (Array.isArray(state.tasks)) tasks = state.tasks;
@@ -1098,37 +1212,18 @@ function applyAppState(state, { mergeDefaults = true } = {}) {
   if (Array.isArray(state.bandEvents)) bandEvents = state.bandEvents;
 }
 
-const SEED_TASK_IDS = new Set([1, 2, 3, 4, 5, 6, 7, 8]);
-const SEED_BAND_EVENT_IDS = new Set([1]);
-
-function purgeSeedData(state) {
-  if (Array.isArray(state.tasks))
-    state.tasks = state.tasks.filter(t => !SEED_TASK_IDS.has(t.id));
-  if (Array.isArray(state.bandEvents))
-    state.bandEvents = state.bandEvents.filter(e => !SEED_BAND_EVENT_IDS.has(e.id));
-  if (state.schedules && typeof state.schedules === 'object') {
-    const keys = Object.keys(state.schedules);
-    if (keys.length && keys.every(k => k.startsWith('2024-10-')))
-      state.schedules = {};
-  }
-  return state;
-}
-
 function loadAppState() {
   const saved = localStorage.getItem(APP_STATE_KEY);
   if (!saved) {
     syncCompetitionData();
-    persistLocalAppState();
     return;
   }
   try {
-    applyAppState(purgeSeedData(JSON.parse(saved)));
+    applyAppState(JSON.parse(saved));
     syncCompetitionData();
-    persistLocalAppState();
   } catch {
     showToast('저장된 데이터를 불러오지 못했습니다');
     syncCompetitionData();
-    persistLocalAppState();
   }
 }
 
@@ -1193,7 +1288,6 @@ function initCloudSync() {
 function applyRemotePayload(remoteData) {
   const remoteState = remoteData?.state;
   if (!remoteState) return;
-  purgeSeedData(remoteState);
   const remoteSavedAt = Number(remoteData.savedAt || 0);
 
   // 같은 기기에서 저장한 데이터가 돌아왔는데, 그 사이에 더 최신 변경이 생겼다면
@@ -1204,7 +1298,7 @@ function applyRemotePayload(remoteData) {
   }
 
   applyingRemoteState = true;
-  applyAppState(remoteState, { mergeDefaults: false });
+  applyAppState(remoteState);
   syncCompetitionData();
   localStorage.setItem(APP_STATE_KEY, JSON.stringify(getAppState()));
   applyingRemoteState = false;
@@ -1274,8 +1368,13 @@ function logout() {
 
 function updateCurrentUserLabel(member) {
   const label = document.getElementById('current-user-label');
-  if (!label) return;
-  label.textContent = member ? `${member.name} · ${member.id === LEADER_ID ? '리더' : member.instrument}` : '';
+  if (label) label.textContent = member ? `${member.name} · ${member.id === LEADER_ID ? '리더' : member.instrument}` : '';
+  const chip = document.getElementById('sidebar-user-chip');
+  const av = document.getElementById('sidebar-user-av');
+  const name = document.getElementById('sidebar-user-name');
+  if (chip) chip.style.display = member ? 'flex' : 'none';
+  if (av && member) { av.textContent = member.short; av.style.background = member.color; }
+  if (name && member) name.textContent = `${member.name} · ${member.id === LEADER_ID ? '리더' : member.instrument}`;
 }
 
 function isLeader() {
@@ -1292,13 +1391,17 @@ function requireLeader() {
 function navigateTo(page) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelectorAll('.snav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('page-' + page).classList.add('active');
   const n = document.getElementById('nav-' + page);
   if (n) n.classList.add('active');
+  const sn = document.getElementById('snav-' + page);
+  if (sn) sn.classList.add('active');
   currentPage = page;
 
   const titles = { home:'Band Desk', notice:'공지사항', songs:'곡 관리', tasks:'할 일', calendar:'달력', competition:'대회 정보' };
-  document.getElementById('page-title').textContent = titles[page] || 'Band Desk';
+  const titleEl = document.getElementById('page-title');
+  if (titleEl) titleEl.textContent = titles[page] || 'Band Desk';
 
   if (page === 'songs')       renderSongs();
   if (page === 'tasks')       renderTasks();
@@ -1310,12 +1413,16 @@ function navigateTo(page) {
 
 function updateLeaderControls() {
   const leader = isLeader();
+  const editablePage = currentPage === 'notice' || currentPage === 'tasks' || currentPage === 'songs' || currentPage === 'calendar';
+  const canEditThisPage = currentPage === 'calendar' ? !!currentUserId : leader;
+  const showAdd = editablePage && canEditThisPage;
+
   const fab = document.getElementById('fab');
-  if (fab) {
-    const editablePage = currentPage === 'notice' || currentPage === 'tasks' || currentPage === 'songs' || currentPage === 'calendar';
-    const canEditThisPage = currentPage === 'calendar' ? !!currentUserId : leader;
-    fab.style.display = editablePage && canEditThisPage ? 'flex' : 'none';
-  }
+  if (fab) fab.style.display = showAdd ? 'flex' : 'none';
+
+  const sidebarAddBtn = document.getElementById('sidebar-add-btn');
+  if (sidebarAddBtn) sidebarAddBtn.style.display = showAdd ? 'flex' : 'none';
+
   const scheduleBtn = document.getElementById('schedule-edit-btn');
   if (scheduleBtn) scheduleBtn.style.display = currentUserId ? 'block' : 'none';
   const bandEventBtn = document.getElementById('band-event-edit-btn');
@@ -1325,9 +1432,7 @@ function updateLeaderControls() {
   const setlistLink = document.getElementById('home-setlist-link');
   if (setlistLink) setlistLink.textContent = leader ? '설정 →' : '보기 →';
   const setlistEditHint = document.getElementById('setlist-edit-hint');
-  if (setlistEditHint) {
-    setlistEditHint.style.display = leader ? 'inline' : 'none';
-  }
+  if (setlistEditHint) setlistEditHint.style.display = leader ? 'inline' : 'none';
 }
 
 // ═══════════════ TOAST ═══════════════
@@ -2067,60 +2172,7 @@ const MULE_COMPETITION_URLS = [
   'https://www.mule.co.kr/bbs/info/contest',
   'https://www.mule.co.kr/bbs/lesson/contest',
 ];
-const VERIFIED_COMPETITION_ITEMS = [
-  {
-    id: 'verified-penta-super-rookie-2026',
-    sourceType: 'verified',
-    status: 'open',
-    title: '2026 PENTA SUPER ROOKIE',
-    organizer: '인천펜타포트 음악축제 / 인천음악창작소',
-    date: '2026. 07. 31 ~ 08. 02',
-    deadline: '2026. 05. 01',
-    venue: '송도달빛축제공원',
-    prize: '총상금 1,800만원 / TOP 10 펜타포트 서드 스테이지 출연',
-    url: 'https://pentaport.co.kr/Notice/?bmode=view&idx=170773377',
-    desc: '신인 밴드·아티스트 대상 오픈콜입니다. 대상팀 해외 페스티벌 출연 기회와 상위 입상팀 음반 제작 지원이 제공됩니다.',
-  },
-  {
-    id: 'verified-after-work-rock-2026',
-    sourceType: 'verified',
-    status: 'open',
-    title: '2026 직장인 밴드 경연대회 퇴근 후 락',
-    organizer: '인천사랑운동센터',
-    date: '2026. 06. 07 15:00',
-    deadline: '2026. 05. 10',
-    venue: '인천문화예술회관 소극장',
-    prize: '총상금 4,500,000원',
-    url: 'https://www.mule.co.kr/bbs/lesson/contest?idx=68276923&v=v',
-    desc: '직장인, 사회인, 동호회 밴드 대상 경연입니다. 라이브 합주 또는 공연 영상 URL 제출이 필요합니다.',
-  },
-  {
-    id: 'verified-gwangju-busking-worldcup-2026',
-    sourceType: 'verified',
-    status: 'open',
-    title: '2026 제5회 광주버스킹월드컵',
-    organizer: '광주광역시 동구청 / 광주동구문화관광재단',
-    date: '2026. 10. 07 ~ 10. 11',
-    deadline: '2026. 05. 31',
-    venue: '광주 충장로 일원',
-    prize: '총상금 2,000만원',
-    url: 'https://www.buskingworldcup.com/',
-    desc: '국내외 뮤지션과 공연팀을 모집하는 글로벌 버스킹 음악 경연대회입니다.',
-  },
-  {
-    id: 'verified-ulsan-street-music-2026',
-    sourceType: 'verified',
-    status: 'open',
-    title: '제4회 울산 중구 전국거리음악대회',
-    organizer: '울산광역시 중구',
-    date: '2026. 06. 20 ~ 06. 21',
-    deadline: '2026. 04. 26',
-    venue: '울산 중구 성남동 일원',
-    prize: '총상금 1,800만원',
-    url: 'https://www.mule.co.kr/bbs/info/contest?idx=68067343&v=v',
-    desc: '전국 음악 버스커 개인 또는 팀 참가가 가능한 거리음악 경연입니다.',
-  },
-];
+const VERIFIED_COMPETITION_ITEMS = [];
 
 function renderCompetitions() {
   syncCompetitionData();
@@ -2615,6 +2667,10 @@ function openAddSong() {
       <label class="form-label">아티스트</label>
       <input class="form-input" id="s-artist" placeholder="아티스트명 입력" />
     </div>
+    <div class="form-group" style="display:flex;align-items:center;gap:var(--space-3)">
+      <input type="checkbox" id="s-cover" style="accent-color:var(--c-blue-base);width:18px;height:18px">
+      <label for="s-cover" style="font-size:14px;font-weight:500;cursor:pointer">커버곡 (타 아티스트 곡)</label>
+    </div>
     <div class="form-group">
       <label class="form-label">MP3 파일</label>
       <input class="form-input" id="s-mp3-file" type="file" accept="audio/*" />
@@ -2635,6 +2691,7 @@ function submitSong() {
     id: Date.now(),
     title,
     artist: document.getElementById('s-artist').value.trim() || '알 수 없음',
+    cover: document.getElementById('s-cover').checked,
     mp3: document.getElementById('s-mp3-file').files.length > 0,
     sheet: document.getElementById('s-sheet-file').files.length > 0,
     mp3Name: document.getElementById('s-mp3-file').files[0]?.name || '',
