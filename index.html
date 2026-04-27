@@ -411,6 +411,8 @@ body.dark-mode .list-item.cover-song {
 .cal-dots { display: flex; gap: 2px; flex-wrap: wrap; justify-content: center; max-width: 30px; }
 .cal-dot { width: 5px; height: 5px; border-radius: 50%; }
 .cal-event-dot { width: 18px; height: 5px; border-radius: 99px; background: var(--c-orange-base); margin-top: 2px; }
+.cal-personal-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--c-red-base); margin-top: 2px; }
+.cal-cell.personal-blocked .cal-day-num { color: var(--c-red-base); }
 
 /* ── Notice ── */
 .notice-item {
@@ -912,8 +914,10 @@ svg { fill: currentColor; }
         <h3 id="cal-detail-title" style="margin-bottom:var(--space-3)"></h3>
         <div class="list-group" id="cal-detail-events" style="margin-bottom:var(--space-4)"></div>
         <div class="list-group" id="cal-detail-members"></div>
+        <div class="list-group" id="cal-detail-personal" style="margin-top:var(--space-4)"></div>
         <button class="btn-primary" id="band-event-edit-btn" style="margin-top:var(--space-4);background:var(--c-orange-base)" onclick="showBandEventModal()">합주/공연 일정 등록</button>
         <button class="btn-primary" id="schedule-edit-btn" style="margin-top:var(--space-4)" onclick="showAddScheduleModal()">이 날 일정 수정</button>
+        <button class="btn-primary" id="personal-block-btn" style="margin-top:var(--space-2);background:var(--c-red-base)" onclick="togglePersonalBlock()">개인 일정 추가</button>
       </div>
     </div>
 
@@ -971,7 +975,7 @@ svg { fill: currentColor; }
 // ═══════════════ DATA ═══════════════
 
 const MEMBERS = [
-  { id:'jinheum', name:'조진흠', short:'조', role:'리더', instrument:'리더', color:'#5B5CE2' },
+  { id:'jinheum', name:'조진흠', short:'조', role:'보컬', instrument:'보컬', color:'#5B5CE2' },
   { id:'seongyong', name:'신성용', short:'신', role:'멤버', instrument:'드럼', color:'#F9737A' },
   { id:'rakhyun', name:'정락현', short:'정', role:'멤버', instrument:'베이스', color:'#10B981' },
   { id:'sanghyun', name:'주상현', short:'주', role:'멤버', instrument:'기타', color:'#F59E0B' },
@@ -991,6 +995,8 @@ let tasks = [];
 let schedules = {};
 
 let bandEvents = [];
+
+let personalBlocks = {};
 
 // ═══════════════ STATE ═══════════════
 let currentUserId = null;
@@ -1153,6 +1159,7 @@ function getAppState() {
     tasks,
     schedules,
     bandEvents,
+    personalBlocks,
   };
 }
 
@@ -1210,6 +1217,7 @@ function applyAppState(state) {
   if (Array.isArray(state.tasks)) tasks = state.tasks;
   if (state.schedules && typeof state.schedules === 'object') schedules = state.schedules;
   if (Array.isArray(state.bandEvents)) bandEvents = state.bandEvents;
+  if (state.personalBlocks && typeof state.personalBlocks === 'object') personalBlocks = state.personalBlocks;
 }
 
 function loadAppState() {
@@ -1368,13 +1376,13 @@ function logout() {
 
 function updateCurrentUserLabel(member) {
   const label = document.getElementById('current-user-label');
-  if (label) label.textContent = member ? `${member.name} · ${member.id === LEADER_ID ? '리더' : member.instrument}` : '';
+  if (label) label.textContent = member ? `${member.name} · ${member.instrument}` : '';
   const chip = document.getElementById('sidebar-user-chip');
   const av = document.getElementById('sidebar-user-av');
   const name = document.getElementById('sidebar-user-name');
   if (chip) chip.style.display = member ? 'flex' : 'none';
   if (av && member) { av.textContent = member.short; av.style.background = member.color; }
-  if (name && member) name.textContent = `${member.name} · ${member.id === LEADER_ID ? '리더' : member.instrument}`;
+  if (name && member) name.textContent = `${member.name} · ${member.instrument}`;
 }
 
 function isLeader() {
@@ -1427,6 +1435,8 @@ function updateLeaderControls() {
   if (scheduleBtn) scheduleBtn.style.display = currentUserId ? 'block' : 'none';
   const bandEventBtn = document.getElementById('band-event-edit-btn');
   if (bandEventBtn) bandEventBtn.style.display = leader ? 'block' : 'none';
+  const personalBlockBtn = document.getElementById('personal-block-btn');
+  if (personalBlockBtn) personalBlockBtn.style.display = currentUserId ? 'block' : 'none';
   const scanBtn = document.getElementById('leader-competition-scan');
   if (scanBtn) scanBtn.style.display = leader ? 'block' : 'none';
   const setlistLink = document.getElementById('home-setlist-link');
@@ -1930,16 +1940,18 @@ function renderCalendar() {
     const sc = (schedules[key]||[]).filter(id => calFilter.includes(id));
     const dayEvents = bandEvents.filter(event => event.date === key);
     const isSel = key === selectedDate;
+    const myBlock = currentUserId && (personalBlocks[key]||[]).find(b => b.userId === currentUserId);
     const dots = sc.slice(0,5).map(id => {
       const mm = MEMBERS.find(x => x.id===id);
       return `<div class="cal-dot" style="background:${mm?mm.color:'#ccc'}"></div>`;
     }).join('');
     html += `
-      <div class="cal-cell ${isToday?'today':''} ${dayEvents.length?'band-event':''} ${isSel?'selected':''}"
+      <div class="cal-cell ${isToday?'today':''} ${dayEvents.length?'band-event':''} ${isSel?'selected':''} ${myBlock?'personal-blocked':''}"
            onclick="selectDay('${key}',${d})">
         <div class="cal-day-num">${d}</div>
         <div class="cal-dots">${dots}</div>
         ${dayEvents.length ? '<div class="cal-event-dot"></div>' : ''}
+        ${myBlock ? '<div class="cal-personal-dot"></div>' : ''}
       </div>`;
   }
   document.getElementById('cal-grid').innerHTML = html;
@@ -1992,11 +2004,39 @@ function showDayDetail(key) {
         <div class="member-av" style="background:${mm.color}">${mm.short}</div>
         <div>
           <div style="font-weight:600">${mm.name}</div>
-          <div style="font-size:13px;color:var(--c-text-muted)">${mm.instrument}${mm.id === LEADER_ID ? ' · 리더' : ''}</div>
+          <div style="font-size:13px;color:var(--c-text-muted)">${mm.instrument}</div>
         </div>
         <span class="tag green" style="margin-left:auto">참석 가능</span>
       </div>`;
   }).join('') : `<div style="color:var(--c-text-muted);font-size:14px;text-align:center;padding:var(--space-4)">등록된 일정이 없습니다</div>`;
+  const personalEl = document.getElementById('cal-detail-personal');
+  const blocks = personalBlocks[key] || [];
+  if (blocks.length) {
+    personalEl.innerHTML = `
+      <div style="font-size:11px;font-weight:600;color:var(--c-text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">개인 일정 (합주·공연 불가)</div>
+      ${blocks.map(b => {
+        const mm = MEMBERS.find(x => x.id === b.userId);
+        if (!mm) return '';
+        return `<div class="member-row">
+          <div class="member-av" style="background:${mm.color}">${mm.short}</div>
+          <div>
+            <div style="font-weight:600">${mm.name}</div>
+            <div style="font-size:13px;color:var(--c-text-muted)">${b.title || '개인 일정'}</div>
+          </div>
+          <span class="tag" style="margin-left:auto;background:var(--c-red-pale);color:var(--c-red-base)">불참</span>
+        </div>`;
+      }).join('')}`;
+  } else {
+    personalEl.innerHTML = '';
+  }
+
+  const personalBlockBtn = document.getElementById('personal-block-btn');
+  if (personalBlockBtn && currentUserId) {
+    const myBlock = blocks.find(b => b.userId === currentUserId);
+    personalBlockBtn.textContent = myBlock ? '개인 일정 취소' : '개인 일정 추가';
+    personalBlockBtn.style.background = myBlock ? 'var(--c-text-muted)' : 'var(--c-red-base)';
+  }
+
   document.getElementById('cal-detail').style.display = 'block';
   updateLeaderControls();
 }
@@ -2119,6 +2159,46 @@ function showBandEventModal(eventId = null) {
     <button class="btn-primary" onclick="saveBandEvent(${event?.id || 'null'})">${event ? '일정 수정' : '일정 등록'}</button>
     ${event ? `<button class="btn-primary" style="margin-top:var(--space-2);background:var(--c-red-base)" onclick="deleteBandEvent(${event.id})">일정 삭제</button>` : ''}
   `);
+}
+
+function togglePersonalBlock() {
+  if (!currentUserId) { showToast('로그인 후 이용할 수 있습니다'); return; }
+  if (!selectedDate) { showToast('달력에서 날짜를 먼저 선택하세요'); return; }
+  const blocks = personalBlocks[selectedDate] || [];
+  const existing = blocks.find(b => b.userId === currentUserId);
+  if (existing) {
+    personalBlocks[selectedDate] = blocks.filter(b => b.userId !== currentUserId);
+    saveAppState();
+    showDayDetail(selectedDate);
+    renderCalendar();
+    showToast('개인 일정을 취소했습니다');
+  } else {
+    const [y,m,d] = selectedDate.split('-');
+    showModal(`
+      <div class="modal-title">${parseInt(m)}월 ${parseInt(d)}일 개인 일정</div>
+      <div style="font-size:13px;color:var(--c-text-muted);line-height:1.6;margin-bottom:var(--space-4)">
+        이 날 개인 일정을 등록하면 합주·공연이 불가능한 날로 표시됩니다.
+      </div>
+      <div class="form-group">
+        <label class="form-label">일정 내용 (선택)</label>
+        <input class="form-input" id="personal-block-title" placeholder="예: 가족 행사, 여행, 시험" />
+      </div>
+      <button class="btn-primary" style="background:var(--c-red-base)" onclick="savePersonalBlock()">개인 일정 등록</button>
+    `);
+  }
+}
+
+function savePersonalBlock() {
+  if (!currentUserId || !selectedDate) return;
+  const title = document.getElementById('personal-block-title').value.trim();
+  if (!personalBlocks[selectedDate]) personalBlocks[selectedDate] = [];
+  personalBlocks[selectedDate] = personalBlocks[selectedDate].filter(b => b.userId !== currentUserId);
+  personalBlocks[selectedDate].push({ userId: currentUserId, title: title || '개인 일정' });
+  saveAppState();
+  closeModal();
+  showDayDetail(selectedDate);
+  renderCalendar();
+  showToast('개인 일정을 등록했습니다');
 }
 
 function saveBandEvent(eventId = null) {
@@ -2714,6 +2794,10 @@ function openEditSong(songId) {
       <div style="font-weight:700">${escapeHtml(song.title)}</div>
       <div style="font-size:13px;color:var(--c-text-muted);margin-top:2px">${escapeHtml(song.artist) || '아티스트 미입력'}</div>
     </div>
+    <div class="form-group" style="display:flex;align-items:center;gap:var(--space-3)">
+      <input type="checkbox" id="edit-cover" ${song.cover ? 'checked' : ''} style="accent-color:var(--c-blue-base);width:18px;height:18px">
+      <label for="edit-cover" style="font-size:14px;font-weight:500;cursor:pointer">커버곡 (타 아티스트 곡)</label>
+    </div>
     <div class="form-group">
       <label class="form-label">MP3 상태</label>
       <select class="form-select" id="edit-mp3-state">
@@ -2767,6 +2851,7 @@ function saveSongFiles(songId) {
     song.sheet = true;
     song.sheetName = sheetFile?.name || '악보';
   }
+  song.cover = document.getElementById('edit-cover').checked;
 
   saveAppState();
   closeModal();
