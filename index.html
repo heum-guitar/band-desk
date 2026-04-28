@@ -893,6 +893,43 @@ svg { fill: currentColor; }
     flex: 0 0 360px;
   }
 
+  /* ── 달력 데스크탑 2컬럼 레이아웃 ── */
+  #page-calendar.active {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    gap: var(--space-4);
+    max-width: none;
+    height: 100%;
+    overflow: hidden;
+  }
+  .calendar-main-col,
+  #page-calendar #cal-detail {
+    flex: 1 1 50%;
+    min-width: 0;
+    min-height: 0;
+  }
+  .calendar-main-col {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    overflow: hidden;
+  }
+  .calendar-main-col > .card {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .calendar-main-col #cal-grid {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+  #page-calendar #cal-detail {
+    display: block;
+    overflow-y: auto;
+  }
+
   /* ── 공지 상세/수정 데스크탑 레이아웃 ── */
   .modal-sheet:has(.notice-detail-view),
   .modal-sheet:has(.notice-edit-view) {
@@ -1194,23 +1231,25 @@ svg { fill: currentColor; }
 
     <!-- ══════════ CALENDAR ══════════ -->
     <div class="page" id="page-calendar">
-      <div class="card">
-        <div class="cal-header">
-          <button class="cal-nav-btn" onclick="changeMonth(-1)">
-            <svg width="20" height="20" viewBox="0 0 24 24"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z"/></svg>
-          </button>
-          <span class="cal-month" id="cal-label"></span>
-          <button class="cal-nav-btn" onclick="changeMonth(1)">
-            <svg width="20" height="20" viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
-          </button>
+      <div class="calendar-main-col">
+        <div class="card">
+          <div class="cal-header">
+            <button class="cal-nav-btn" onclick="changeMonth(-1)">
+              <svg width="20" height="20" viewBox="0 0 24 24"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z"/></svg>
+            </button>
+            <span class="cal-month" id="cal-label"></span>
+            <button class="cal-nav-btn" onclick="changeMonth(1)">
+              <svg width="20" height="20" viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
+            </button>
+          </div>
+          <div class="cal-grid" id="cal-grid"></div>
         </div>
-        <div class="cal-grid" id="cal-grid"></div>
+        <div>
+          <div style="font-size:12px;font-weight:600;color:var(--c-text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:var(--space-3)">멤버 필터</div>
+          <div class="member-chips" id="cal-filter"></div>
+        </div>
       </div>
-      <div>
-        <div style="font-size:12px;font-weight:600;color:var(--c-text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:var(--space-3)">멤버 필터</div>
-        <div class="member-chips" id="cal-filter"></div>
-      </div>
-      <div class="card" id="cal-detail" style="display:none">
+      <div class="card" id="cal-detail">
         <h3 id="cal-detail-title" style="margin-bottom:var(--space-3)"></h3>
         <div class="list-group" id="cal-detail-events" style="margin-bottom:var(--space-4)"></div>
         <div class="list-group" id="cal-detail-members"></div>
@@ -1306,7 +1345,7 @@ let currentPage = 'home';
 let activeMember = 'jinheum';
 let calDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 let calFilter = MEMBERS.map(m => m.id);
-let selectedDate = dateKey(new Date());
+let selectedDate = null;
 let playingId = null;
 let audioTimer = null;
 let audioElement = null;
@@ -1317,7 +1356,7 @@ let refreshingForUpdate = false;
 const LOGIN_KEY = 'bandDeskCurrentUserId';
 const APP_STATE_KEY = 'bandDeskAppStateV2';
 const THEME_KEY = 'bandDeskTheme';
-const APP_BUILD = '2026-04-28-03';
+const APP_BUILD = '2026-04-29-01';
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyDlG00JPma_ThM2omg5WAfYMUavd6F5xVk",
   authDomain: "heum-band.firebaseapp.com",
@@ -1770,26 +1809,27 @@ function updateLeaderControls() {
   const editablePage = currentPage === 'notice' || currentPage === 'tasks' || currentPage === 'songs' || currentPage === 'calendar';
   const canEditThisPage = currentPage === 'calendar' ? !!currentUserId : leader;
   const showAdd = editablePage && canEditThisPage;
+  const showDesktopAdd = showAdd && currentPage !== 'calendar';
 
   const fab = document.getElementById('fab');
   if (fab) fab.style.display = showAdd ? 'flex' : 'none';
 
   const desktopAddBtn = document.getElementById('desktop-add-btn');
   if (desktopAddBtn) {
-    if (showAdd) desktopAddBtn.classList.add('visible');
+    if (showDesktopAdd) desktopAddBtn.classList.add('visible');
     else desktopAddBtn.classList.remove('visible');
   }
   const toolbar = document.getElementById('desktop-content-toolbar');
-  if (toolbar) toolbar.style.paddingBottom = showAdd ? '0' : '0';
-  if (toolbar) toolbar.style.minHeight = showAdd ? '52px' : '0';
-  if (toolbar) toolbar.style.padding = showAdd ? '16px 28px 0' : '0';
+  if (toolbar) toolbar.style.paddingBottom = showDesktopAdd ? '0' : '0';
+  if (toolbar) toolbar.style.minHeight = showDesktopAdd ? '52px' : '0';
+  if (toolbar) toolbar.style.padding = showDesktopAdd ? '16px 28px 0' : '0';
 
   const scheduleBtn = document.getElementById('schedule-edit-btn');
-  if (scheduleBtn) scheduleBtn.style.display = currentUserId ? 'block' : 'none';
+  if (scheduleBtn) scheduleBtn.style.display = currentUserId && selectedDate ? 'block' : 'none';
   const bandEventBtn = document.getElementById('band-event-edit-btn');
-  if (bandEventBtn) bandEventBtn.style.display = leader ? 'block' : 'none';
+  if (bandEventBtn) bandEventBtn.style.display = leader && selectedDate ? 'block' : 'none';
   const personalBlockBtn = document.getElementById('personal-block-btn');
-  if (personalBlockBtn) personalBlockBtn.style.display = currentUserId ? 'block' : 'none';
+  if (personalBlockBtn) personalBlockBtn.style.display = currentUserId && selectedDate ? 'block' : 'none';
   const scanBtn = document.getElementById('leader-competition-scan');
   if (scanBtn) scanBtn.style.display = leader ? 'block' : 'none';
   const setlistLink = document.getElementById('home-setlist-link');
@@ -1912,7 +1952,9 @@ function renderHome() {
   `).join('') : '<div style="color:var(--c-text-muted);font-size:14px;text-align:center;padding:var(--space-4)">합주 곡을 추가하세요</div>';
 
   // my tasks
-  const myT = tasks.filter(t => t.mid === currentUserId);
+  const myT = tasks
+    .filter(t => t.mid === currentUserId)
+    .sort((a, b) => Number(a.done) - Number(b.done) || compareTaskDueDate(a, b));
   const ht = document.getElementById('home-tasks');
   ht.innerHTML = myT.map(t => `
     <div class="list-item surface task-item ${t.done?'done':''}" id="ht-${t.id}">
@@ -2466,26 +2508,27 @@ function renderTasks() {
 
 function selectMember(mid) { activeMember = mid; renderTasks(); }
 
+function getTaskDueTime(task) {
+  const value = String(task?.dl || '').trim();
+  if (!value) return Number.POSITIVE_INFINITY;
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? Number.POSITIVE_INFINITY : time;
+}
+
+function compareTaskDueDate(a, b) {
+  const delta = getTaskDueTime(a) - getTaskDueTime(b);
+  return Number.isNaN(delta) ? (a.id || 0) - (b.id || 0) : delta;
+}
+
 function renderTaskList() {
-  const mt = tasks.filter(t => t.mid === activeMember);
+  const mt = tasks.filter(t => t.mid === activeMember).sort(compareTaskDueDate);
   const el = document.getElementById('task-list');
   if (!mt.length) {
     el.innerHTML = '<div style="text-align:center;color:var(--c-text-muted);padding:var(--space-8)">할 일이 없습니다</div>';
     updateLeaderControls();
     return;
   }
-  const pending = mt.filter(t => !t.done);
-  const done    = mt.filter(t =>  t.done);
-  let h = '';
-  if (pending.length) {
-    h += `<div style="font-size:11px;font-weight:600;color:var(--c-text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">진행 중 ${pending.length}</div>`;
-    h += pending.map(t => taskHTML(t)).join('');
-  }
-  if (done.length) {
-    h += `<div style="font-size:11px;font-weight:600;color:var(--c-text-muted);text-transform:uppercase;letter-spacing:.5px;margin:var(--space-4) 0 4px">완료 ${done.length}</div>`;
-    h += done.map(t => taskHTML(t)).join('');
-  }
-  el.innerHTML = h;
+  el.innerHTML = mt.map(t => taskHTML(t)).join('');
   updateLeaderControls();
 }
 
@@ -2570,6 +2613,7 @@ function renderCalendar() {
   `).join('');
 
   if (selectedDate) showDayDetail(selectedDate);
+  else showEmptyDayDetail();
   updateLeaderControls();
 }
 
@@ -2644,6 +2688,18 @@ function showDayDetail(key) {
   updateLeaderControls();
 }
 
+function showEmptyDayDetail() {
+  document.getElementById('cal-detail-title').textContent = '날짜를 선택하세요';
+  document.getElementById('cal-detail-events').innerHTML = `
+    <div style="color:var(--c-text-muted);font-size:14px;text-align:center;padding:var(--space-6);background:var(--c-bg);border-radius:var(--radius-md)">
+      달력에서 날짜를 누르면 이곳에 합주/공연, 참석 가능 멤버, 개인 일정이 표시됩니다
+    </div>`;
+  document.getElementById('cal-detail-members').innerHTML = '';
+  document.getElementById('cal-detail-personal').innerHTML = '';
+  document.getElementById('cal-detail').style.display = 'block';
+  updateLeaderControls();
+}
+
 function toggleCalFilter(id) {
   if (calFilter.includes(id)) {
     if (calFilter.length === 1) return;
@@ -2657,7 +2713,6 @@ function toggleCalFilter(id) {
 function changeMonth(d) {
   calDate.setMonth(calDate.getMonth() + d);
   selectedDate = null;
-  document.getElementById('cal-detail').style.display = 'none';
   renderCalendar();
 }
 
