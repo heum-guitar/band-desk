@@ -1410,9 +1410,9 @@ function removeSampleCompetitionNotices(items) {
 
 function isOutdatedSearchCompetition(item) {
   if (!String(item?.id || '').startsWith('search-')) return false;
-  if (!item.sourcePublishedAt) return true;
+  if (!item.sourcePublishedAt) return false;
   const publishedAt = new Date(item.sourcePublishedAt);
-  if (Number.isNaN(publishedAt.getTime())) return true;
+  if (Number.isNaN(publishedAt.getTime())) return false;
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - 180);
   return publishedAt < cutoff;
