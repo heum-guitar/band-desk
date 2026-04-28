@@ -333,7 +333,9 @@ try {
   const competitions = await searchCurrentCompetitions();
   const payload = await saveCompetitionsToFirebase(competitions);
   console.log(`Saved ${payload.items.length} competitions to Firebase at ${payload.updatedAt}`);
+  await admin.app().delete();
 } catch (error) {
   console.error(error);
+  if (admin.apps.length) await admin.app().delete().catch(() => {});
   process.exitCode = 1;
 }
