@@ -549,6 +549,14 @@ body.dark-mode .list-item.cover-song {
 }
 .sheet-action-popover button:hover { background: var(--c-orange-pale); color: var(--c-orange-base); }
 .sheet-action-popover button.danger:hover { background: var(--c-red-pale); color: var(--c-red-base); }
+#home-tasks {
+  max-height: 240px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.home-file-badge {
+  pointer-events: none;
+}
 
 /* ── Song Num ── */
 .song-num { font-size: 13px; font-weight: 700; color: var(--c-text-muted); width: 20px; text-align: center; flex-shrink: 0; }
@@ -1310,7 +1318,7 @@ let refreshingForUpdate = false;
 const LOGIN_KEY = 'bandDeskCurrentUserId';
 const APP_STATE_KEY = 'bandDeskAppStateV2';
 const THEME_KEY = 'bandDeskTheme';
-const APP_BUILD = '2026-04-28-01';
+const APP_BUILD = '2026-04-28-02';
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyDlG00JPma_ThM2omg5WAfYMUavd6F5xVk",
   authDomain: "heum-band.firebaseapp.com",
@@ -1894,10 +1902,10 @@ function renderHome() {
         <div class="item-sub">${s.artist || '아티스트 미입력'}</div>
       </div>
       <div class="file-actions">
-        <div class="file-badge mp3 ${s.mp3?'on':'off'}" onclick="${s.mp3?`togglePlay(${s.id})`:`promptSongFile(${s.id}, 'mp3')`}">
+        <div class="file-badge mp3 home-file-badge ${s.mp3?'on':'off'}">
           ${s.id===playingId?I.pause:I.play}
         </div>
-        <div class="file-badge sheet ${s.sheet?'on':'off'}" onclick="handleSheetButtonClick(event, ${s.id})">
+        <div class="file-badge sheet home-file-badge ${s.sheet?'on':'off'}">
           ${I.sheet}
         </div>
       </div>
@@ -1905,7 +1913,7 @@ function renderHome() {
   `).join('') : '<div style="color:var(--c-text-muted);font-size:14px;text-align:center;padding:var(--space-4)">합주 곡을 추가하세요</div>';
 
   // my tasks
-  const myT = tasks.filter(t => t.mid === currentUserId).slice(0, 3);
+  const myT = tasks.filter(t => t.mid === currentUserId);
   const ht = document.getElementById('home-tasks');
   ht.innerHTML = myT.map(t => `
     <div class="list-item surface task-item ${t.done?'done':''}" id="ht-${t.id}">
@@ -2041,6 +2049,10 @@ function escapeAttr(value = '') {
     .replaceAll('"', '&quot;')
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;');
+}
+
+function jsString(value = '') {
+  return JSON.stringify(String(value || ''));
 }
 
 // ═══════════════ SONGS ═══════════════
@@ -2191,6 +2203,51 @@ function deleteSongSheet(songId) {
   showToast('악보를 삭제했습니다');
 }
 
+async function downloadStoredFile(url, fileName) {
+  if (!url) {
+    showToast('다운로드할 파일이 없습니다');
+    return;
+  }
+  try {
+    showToast('파일을 준비하는 중입니다');
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Download failed: ${response.status}`);
+    const blob = await response.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = fileName || 'band-desk-file';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+  } catch (error) {
+    console.error('File download failed:', error);
+    showToast('파일 다운로드에 실패했습니다');
+  }
+}
+
+function openMp3Preview(songId) {
+  const s = SONGS.find(x => x.id === songId);
+  if (!s) return;
+  if (!s.mp3Url) {
+    showToast('연결된 MP3 파일 미리보기가 없습니다');
+    return;
+  }
+  const fileName = s.mp3Name || `${s.title}.mp3`;
+  showModal(`
+    <div class="modal-title">${escapeHtml(s.title)} - MP3</div>
+    <div style="background:var(--c-blue-pale);border-radius:var(--radius-md);padding:var(--space-4);margin-bottom:var(--space-5)">
+      <div style="font-weight:700;font-size:14px;margin-bottom:var(--space-3);overflow-wrap:anywhere">${escapeHtml(fileName)}</div>
+      <audio controls preload="metadata" src="${escapeAttr(s.mp3Url)}" style="width:100%"></audio>
+    </div>
+    <div style="display:flex;gap:var(--space-3)">
+      <button class="btn-primary" onclick="downloadStoredFile(${jsString(s.mp3Url)}, ${jsString(fileName)})" style="background:var(--c-blue-base)">다운로드</button>
+      <button class="btn-primary" onclick="closeModal()">닫기</button>
+    </div>
+  `);
+}
+
 function startInlineSongEdit(evt, songId, field) {
   if (!requireLeader()) return;
   const song = SONGS.find(s => s.id === songId);
@@ -2251,7 +2308,7 @@ function renderLibrary() {
           </div>
           <div class="file-actions">
             <div class="file-badge mp3 ${s.mp3?(playing?'on':'on'):'off'}" id="mp3btn-${s.id}"
-                 onclick="${s.mp3?`togglePlay(${s.id})`:`promptSongFile(${s.id}, 'mp3')`}">
+                 onclick="${s.mp3?`openMp3Preview(${s.id})`:`promptSongFile(${s.id}, 'mp3')`}">
               ${playing?I.pause:I.play}
             </div>
             <div class="file-badge sheet ${s.sheet?'on':'off'}"
@@ -2373,6 +2430,7 @@ function togglePlay(songId) {
 function openSheet(songId) {
   const s = SONGS.find(x => x.id === songId);
   if (!s) return;
+  const fileName = s.sheetName || `${s.title}-sheet`;
   const sheetPreview = s.sheetUrl
     ? (String(s.sheetType || '').startsWith('image/')
       ? `<img src="${escapeAttr(s.sheetUrl)}" alt="${escapeAttr(s.sheetName || s.title)}" style="display:block;width:100%;max-height:60vh;object-fit:contain;border-radius:var(--radius-md);background:white" />`
@@ -2386,7 +2444,7 @@ function openSheet(songId) {
     <div class="modal-title">${escapeHtml(s.title)} — 악보</div>
     <div style="margin-bottom:var(--space-5)">${sheetPreview}</div>
     <div style="display:flex;gap:var(--space-3)">
-      ${s.sheetUrl ? `<a class="btn-primary" href="${escapeAttr(s.sheetUrl)}" download="${escapeAttr(s.sheetName || `${s.title}-sheet`)}" style="background:var(--c-orange-base);text-decoration:none;text-align:center">다운로드</a>` : ''}
+      ${s.sheetUrl ? `<button class="btn-primary" onclick="downloadStoredFile(${jsString(s.sheetUrl)}, ${jsString(fileName)})" style="background:var(--c-orange-base)">다운로드</button>` : ''}
       <button class="btn-primary" onclick="closeModal()">닫기</button>
     </div>
   `);
