@@ -554,9 +554,8 @@ body.dark-mode .list-item.cover-song {
   overflow-y: auto;
   padding-right: 2px;
 }
-.home-file-badge {
-  pointer-events: none;
-}
+.home-file-badge.on { cursor: pointer; }
+.home-file-badge.off { pointer-events: none; }
 
 /* ── Song Num ── */
 .song-num { font-size: 13px; font-weight: 700; color: var(--c-text-muted); width: 20px; text-align: center; flex-shrink: 0; }
@@ -1318,7 +1317,7 @@ let refreshingForUpdate = false;
 const LOGIN_KEY = 'bandDeskCurrentUserId';
 const APP_STATE_KEY = 'bandDeskAppStateV2';
 const THEME_KEY = 'bandDeskTheme';
-const APP_BUILD = '2026-04-28-02';
+const APP_BUILD = '2026-04-28-03';
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyDlG00JPma_ThM2omg5WAfYMUavd6F5xVk",
   authDomain: "heum-band.firebaseapp.com",
@@ -1902,10 +1901,10 @@ function renderHome() {
         <div class="item-sub">${s.artist || '아티스트 미입력'}</div>
       </div>
       <div class="file-actions">
-        <div class="file-badge mp3 home-file-badge ${s.mp3?'on':'off'}">
+        <div class="file-badge mp3 home-file-badge ${s.mp3?'on':'off'}" ${s.mp3 ? `onclick="openMp3Preview(${s.id})"` : ''}>
           ${s.id===playingId?I.pause:I.play}
         </div>
-        <div class="file-badge sheet home-file-badge ${s.sheet?'on':'off'}">
+        <div class="file-badge sheet home-file-badge ${s.sheet?'on':'off'}" ${s.sheet ? `onclick="openSheet(${s.id})"` : ''}>
           ${I.sheet}
         </div>
       </div>
