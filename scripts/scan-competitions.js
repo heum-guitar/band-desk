@@ -33,19 +33,35 @@ const VERIFIED_COMPETITION_ITEMS = [
 const DATABASE_URL = process.env.FIREBASE_DATABASE_URL
   || 'https://heum-band-default-rtdb.asia-southeast1.firebasedatabase.app';
 
+const BAND_RELEVANCE_PATTERN = /(밴드|실용\s*음악|버스킹|인디|록|락|음악\s*(?:경연|대회|콘테스트)|콘테스트)/i;
+const COMPETITION_INTENT_PATTERN = /(대회|경연|공모전?|모집|접수|콘테스트|페스티벌|오디션)/i;
+const CLOSED_PATTERN = /(모집완료|\[마감\]|\(마감\)|마감\s*완료|접수\s*종료|게시중단|임시조치)/i;
+const NEWS_SOURCE_PATTERN = /(뉴스|신문|일보|방송|투데이|데일리|타임즈|저널|헤럴드|경제|매일|연합|프레스|기자|미디어|매거진|포스트|서울경제|이데일리|한국경제|머니투데이|뉴시스|아시아경제|조선|중앙|동아|한겨레|경향|국민일보|문화일보|세계일보|부산일보|매일경제|파이낸셜)/i;
+
 function dateKey(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
+function todayKey() {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date());
+  const part = type => parts.find(item => item.type === type)?.value || '';
+  return `${part('year')}-${part('month')}-${part('day')}`;
+}
+
 function parseDeadlineDate(value) {
-  const match = String(value || '').match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
-  if (!match) return null;
-  return `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`;
+  const matches = findKoreanDates(value);
+  if (!matches.length) return null;
+  return matches[0].key;
 }
 
 function isCompetitionOpen(competition) {
   const deadline = parseDeadlineDate(competition.deadline);
-  return !deadline || deadline >= dateKey(new Date());
+  return !deadline || deadline >= todayKey();
 }
 
 function hashString(value) {
@@ -63,10 +79,11 @@ function normalizeCompetitionKey(title, url) {
 }
 
 function isOutdatedSearchCompetition(item) {
+  if (item?.sourceType && item.sourceType !== 'search') return false;
   if (!String(item?.id || '').startsWith('search-')) return false;
-  if (!item.sourcePublishedAt) return true;
+  if (!item.sourcePublishedAt) return false;
   const publishedAt = new Date(item.sourcePublishedAt);
-  if (Number.isNaN(publishedAt.getTime())) return true;
+  if (Number.isNaN(publishedAt.getTime())) return false;
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - 180);
   return publishedAt < cutoff;
@@ -104,8 +121,23 @@ function stripHtml(value) {
   return cleanText(dom.window.document.body.textContent || '');
 }
 
+function cleanMultilineText(value) {
+  return String(value || '')
+    .replace(/\r/g, '\n')
+    .replace(/\u00a0/g, ' ')
+    .split('\n')
+    .map(line => cleanText(line))
+    .filter(Boolean)
+    .join('\n');
+}
+
 function cleanFeedTitle(value) {
   return String(value || '').replace(/\s+-\s+[^-]+$/, '').trim();
+}
+
+function knownValue(value) {
+  const text = cleanText(value);
+  return text && text !== '원문 확인 필요' ? text : '';
 }
 
 function toAbsoluteUrl(value, base) {
@@ -169,10 +201,20 @@ async function fetchMuleCompetitionList(url) {
 async function fetchMuleCompetitionDetail(item) {
   const text = await fetchText(item.url, 9000);
   const doc = new JSDOM(text, { url: item.url }).window.document;
-  const pageText = cleanText(doc.body?.textContent || item.summary);
+  const pageText = extractPageText(doc);
   return buildCompetitionFromSearchItem({
     ...item,
-    summary: pageText.slice(0, 1800),
+    summary: `${item.summary}\n${pageText}`.slice(0, 3200),
+  });
+}
+
+async function fetchSearchCompetitionDetail(item) {
+  const text = await fetchText(item.url, 9000);
+  const doc = new JSDOM(text, { url: item.url }).window.document;
+  const pageText = extractPageText(doc);
+  return buildCompetitionFromSearchItem({
+    ...item,
+    summary: `${item.summary}\n${pageText}`.slice(0, 3600),
   });
 }
 
@@ -189,7 +231,7 @@ async function fetchCompetitionFeed(query) {
     source: item.querySelector('source')?.textContent || '검색 결과',
     publishedAt: item.querySelector('pubDate')?.textContent || '',
     summary: stripHtml(item.querySelector('description')?.textContent || ''),
-  })).filter(isFreshSearchItem).filter(isRelevantCompetitionResult);
+  })).filter(isFreshSearchItem).filter(isRelevantCompetitionResult).filter(item => !isNewsArticleSource(item));
 }
 
 function buildCompetitionFromSearchItem(item) {
@@ -202,25 +244,36 @@ function buildCompetitionFromSearchItem(item) {
     sourceType,
     foundAt: new Date().toISOString(),
     sourcePublishedAt: item.publishedAt || item.sourcePublishedAt || '',
-    status: !parsedDeadline || parsedDeadline >= dateKey(new Date()) ? 'open' : 'planned',
+    status: !parsedDeadline || parsedDeadline >= todayKey() ? 'open' : 'planned',
     title: item.title || '대회 공고',
     organizer: item.source || item.organizer || '검색 결과',
-    date: item.date || inferEventDate(combined) || '원문 확인 필요',
-    deadline: item.deadline || deadline || '원문 확인 필요',
-    venue: item.venue || inferVenue(combined) || '원문 확인 필요',
-    prize: item.prize || inferPrize(combined) || '원문 확인 필요',
+    date: knownValue(item.date) || inferEventDate(combined) || '원문 확인 필요',
+    deadline: knownValue(item.deadline) || deadline || '원문 확인 필요',
+    venue: knownValue(item.venue) || inferVenue(combined) || '원문 확인 필요',
+    prize: knownValue(item.prize) || inferPrize(combined) || '원문 확인 필요',
     url: item.url || '',
-    desc: item.desc || summarizeCompetitionText(combined),
+    desc: knownValue(item.desc) || summarizeCompetitionText(combined),
   };
 }
 
 function isRelevantCompetitionResult(item) {
   const text = `${item.title} ${item.summary}`;
   const title = String(item.title || '');
-  return /밴드|실용음악|버스킹|음악|가요|락|록/i.test(text)
-    && /대회|경연|공모|모집|접수|콘테스트/i.test(text)
-    && !/모집완료|\[마감\]|\(마감\)|게시중단|임시조치/i.test(title)
+  return BAND_RELEVANCE_PATTERN.test(text)
+    && COMPETITION_INTENT_PATTERN.test(text)
+    && !CLOSED_PATTERN.test(title)
     && !hasOnlyPastYear(text);
+}
+
+function isNewsArticleSource(item) {
+  const source = String(item.source || '');
+  let host = '';
+  try {
+    host = new URL(item.url || '').hostname.replace(/^www\./, '');
+  } catch {
+    host = '';
+  }
+  return NEWS_SOURCE_PATTERN.test(source) || /news\.google\.com|news\.naver\.com|n\.news\.naver\.com|daum\.net\/v|joins\.com|chosun\.com|donga\.com|hani\.co\.kr|khan\.co\.kr|yna\.co\.kr|newsis\.com|edaily\.co\.kr|mk\.co\.kr|hankyung\.com|mt\.co\.kr|fnnews\.com|asiae\.co\.kr|sedaily\.com/.test(host);
 }
 
 function isFreshSearchItem(item) {
@@ -235,8 +288,8 @@ function isFreshSearchItem(item) {
 function inferDeadline(text) {
   const matches = findKoreanDates(text);
   const deadlineContext = /(마감|접수|신청|모집|까지|기한|deadline)/i;
-  const contextual = matches.find(match => deadlineContext.test(text.slice(Math.max(0, match.index - 20), match.index + 40)));
-  return formatFoundDate(contextual || matches[0]);
+  const contextual = matches.filter(match => deadlineContext.test(text.slice(Math.max(0, match.index - 30), match.index + 60)));
+  return formatFoundDate(contextual[contextual.length - 1] || matches[0]);
 }
 
 function inferEventDate(text) {
@@ -247,34 +300,102 @@ function inferEventDate(text) {
 }
 
 function findKoreanDates(text) {
-  const nowYear = new Date().getFullYear();
-  const pattern = /(?:(20\d{2})\s*[년.\-/]\s*)?(\d{1,2})\s*[월.\-/]\s*(\d{1,2})\s*일?/g;
-  return [...String(text || '').matchAll(pattern)].map(match => ({
-    index: match.index || 0,
-    year: match[1] || String(nowYear),
-    month: match[2],
-    day: match[3],
-  }));
+  const source = String(text || '');
+  const currentYear = Number(todayKey().slice(0, 4));
+  const matches = [];
+  const addMatch = (match, year, month, day) => {
+    const parsed = normalizeDateParts(year || currentYear, month, day);
+    if (!parsed) return;
+    matches.push({
+      index: match.index || 0,
+      raw: match[0],
+      ...parsed,
+    });
+  };
+
+  for (const match of source.matchAll(/\b(20\d{2})\s*(?:년|[.\-/])\s*(\d{1,2})\s*(?:월|[.\-/])\s*(\d{1,2})\s*일?\b/g)) {
+    addMatch(match, match[1], match[2], match[3]);
+  }
+  for (const match of source.matchAll(/(?<!\d)(\d{1,2})\s*월\s*(\d{1,2})\s*일?/g)) {
+    addMatch(match, currentYear, match[1], match[2]);
+  }
+  for (const match of source.matchAll(/(?<!20\d{2}[.\-/]\s*)(?<!\d)(\d{1,2})\s*[.\-/]\s*(\d{1,2})(?!\s*[.\-/]\s*\d)/g)) {
+    addMatch(match, currentYear, match[1], match[2]);
+  }
+
+  const seen = new Set();
+  return matches
+    .sort((a, b) => a.index - b.index)
+    .filter(match => {
+      const key = `${match.index}:${match.key}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+}
+
+function normalizeDateParts(year, month, day) {
+  const y = Number(year);
+  const m = Number(month);
+  const d = Number(day);
+  if (!Number.isInteger(y) || !Number.isInteger(m) || !Number.isInteger(d)) return null;
+  if (y < 2020 || y > 2035 || m < 1 || m > 12 || d < 1 || d > 31) return null;
+  const date = new Date(Date.UTC(y, m - 1, d));
+  if (date.getUTCFullYear() !== y || date.getUTCMonth() !== m - 1 || date.getUTCDate() !== d) return null;
+  const key = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  return {
+    year: String(y),
+    month: String(m),
+    day: String(d),
+    key,
+    display: `${y}. ${String(m).padStart(2, '0')}. ${String(d).padStart(2, '0')}.`,
+  };
+}
+
+function inferLabeledValue(text, labels, maxLength) {
+  const lines = cleanMultilineText(text).split('\n');
+  const labelPattern = labels.map(label => label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+  const lineMatch = lines.find(line => new RegExp(`(?:${labelPattern})\\s*[:：]?\\s*\\S`, 'i').test(line));
+  if (lineMatch) {
+    const value = lineMatch
+      .replace(new RegExp(`^.*?(?:${labelPattern})\\s*[:：]?\\s*`, 'i'), '')
+      .replace(/\s*(?:문의|접수|주최|주관)\s*[:：].*$/i, '')
+      .trim();
+    if (value.length >= 2) return value.slice(0, maxLength);
+  }
+
+  const compact = cleanText(text);
+  const match = compact.match(new RegExp(`(?:${labelPattern})\\s*[:：]?\\s*([^.!?。]{2,${maxLength}})`, 'i'));
+  return match ? cleanText(match[1]).slice(0, maxLength) : '';
+}
+
+function extractPageText(doc) {
+  doc.querySelectorAll('script, style, noscript, iframe, svg, nav, header, footer').forEach(node => node.remove());
+  const main = doc.querySelector('article, main, .view, .view_content, .board_view, .board-content, .content, .contents, .post, .entry-content, #content') || doc.body;
+  return cleanMultilineText(main?.textContent || '');
 }
 
 function formatFoundDate(found) {
   if (!found) return '';
-  return `${found.year}. ${String(found.month).padStart(2, '0')}. ${String(found.day).padStart(2, '0')}`;
+  return found.display;
 }
 
 function inferVenue(text) {
-  const match = String(text || '').match(/(?:장소|공연장|개최지|venue)\s*[:：]?\s*([^.,\n]{2,28})/i);
-  return match ? match[1].trim() : '';
+  return inferLabeledValue(text, ['장소', '공연장', '개최지', '행사장', 'venue'], 48);
 }
 
 function inferPrize(text) {
-  const match = String(text || '').match(/(?:상금|시상|혜택|prize)\s*[:：]?\s*([^.,\n]{2,42})/i);
-  return match ? match[1].trim() : '원문 확인 필요';
+  return inferLabeledValue(text, ['상금', '시상', '시상내역', '혜택', 'prize'], 72);
 }
 
 function summarizeCompetitionText(text) {
-  const cleaned = cleanText(text);
-  return cleaned.length > 120 ? `${cleaned.slice(0, 120)}...` : cleaned || '원문에서 세부 내용을 확인하세요.';
+  const cleaned = cleanText(
+    String(text || '')
+      .split('\n')
+      .filter(line => !/^(일시|일정|장소|접수|마감|시상|상금|문의)\s*[:：]/.test(line))
+      .join(' '),
+  );
+  return cleaned.length > 160 ? `${cleaned.slice(0, 160)}...` : cleaned || '원문에서 세부 내용을 확인하세요.';
 }
 
 async function searchCurrentCompetitions() {
@@ -286,7 +407,11 @@ async function searchCurrentCompetitions() {
     }),
     Promise.allSettled(COMPETITION_SEARCH_QUERIES.map(fetchCompetitionFeed)),
   ]);
-  const newsItems = feeds.flatMap(result => result.status === 'fulfilled' ? result.value : []);
+  const feedCandidates = feeds.flatMap(result => result.status === 'fulfilled' ? result.value : []);
+  const feedDetails = await Promise.allSettled(feedCandidates.slice(0, 8).map(fetchSearchCompetitionDetail));
+  const newsItems = feedDetails
+    .map((result, index) => result.status === 'fulfilled' ? result.value : buildCompetitionFromSearchItem(feedCandidates[index]))
+    .filter(Boolean);
   const items = [...verified, ...mule, ...newsItems];
   const seen = new Set();
   return removeOutdatedCompetitions(items)
@@ -331,6 +456,10 @@ async function saveCompetitionsToFirebase(items) {
 
 try {
   const competitions = await searchCurrentCompetitions();
+  if (process.env.DRY_RUN_COMPETITIONS === '1') {
+    console.log(JSON.stringify({ count: competitions.length, items: competitions }, null, 2));
+    process.exit(0);
+  }
   const payload = await saveCompetitionsToFirebase(competitions);
   console.log(`Saved ${payload.items.length} competitions to Firebase at ${payload.updatedAt}`);
   await admin.app().delete();
