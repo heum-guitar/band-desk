@@ -1,0 +1,13 @@
+{
+  "hosting": {
+    "site": "heum-band",
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      "firepit-log.txt",
+      "**/.*",
+      "**/node_modules/**",
+      "scripts/**"
+    ]
+  }
+}
